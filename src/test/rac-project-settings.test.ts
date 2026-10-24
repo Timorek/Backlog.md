@@ -29,6 +29,29 @@ beforeEach(async () => {
 });
 
 describe("RAC authorized configuration changes", () => {
+	test("explicit skip-system-auth bypasses the authorizer for enable and disable", async () => {
+		let authorizations = 0;
+		const authorize = async () => {
+			authorizations++;
+			throw new Error("native authentication must not run");
+		};
+		for (const enabled of [true, false]) {
+			const settings = await setRacEnabled(root, enabled, { dataRoot: data, authorize, skipSystemAuth: true });
+			expect(settings.enabled).toBe(enabled);
+			expect(await loadRacSettings(root, data)).toEqual(settings);
+		}
+		expect(authorizations).toBe(0);
+	});
+
+	test("skipping system authentication preserves path and settings validation", async () => {
+		await expect(setRacEnabled("relative", true, { dataRoot: data, skipSystemAuth: true })).rejects.toThrow();
+		await expect(setRacEnabled(root, true, { dataRoot: join(root, "data"), skipSystemAuth: true })).rejects.toThrow();
+		const path = await settingsFile({ projectKey: "wrong" });
+		const before = await readFile(path, "utf8");
+		await expect(setRacEnabled(root, true, { dataRoot: data, skipSystemAuth: true })).rejects.toThrow();
+		expect(await readFile(path, "utf8")).toBe(before);
+	});
+
 	test("authorizes each enable/disable, atomically writes private files and round-trips through the reader", async () => {
 		const changes: boolean[] = [];
 		const authorize = async (change: { enabled: boolean; canonicalRoot: string }) => {

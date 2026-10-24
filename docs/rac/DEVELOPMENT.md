@@ -75,11 +75,21 @@ bun src/cli.ts rac enable
 bun src/cli.ts rac disable
 ```
 
-Both commands display macOS system authentication (Touch ID/account password).
+By default both commands display macOS system authentication (Touch ID/account password).
 Cancellation leaves settings unchanged. Apple Command Line Tools are required;
 authorization on other OSes fails closed. Settings are outside Git under the
 project's canonical path hash. Enabling does not start an agent or add UI buttons.
 See [project configuration](PROJECT-CONFIGURATION.md) for the trust boundaries.
+
+To explicitly skip the system prompt without elevating OS privileges:
+
+```bash
+bun src/cli.ts rac enable --skip-system-auth
+bun src/cli.ts rac disable --skip-system-auth
+```
+
+The caller still needs write access to the private external settings directory.
+This flag does not bypass path/permission checks or provide Windows ACL support.
 
 Manual verification: cancel an enable attempt and check that no settings were
 created; repeat and authenticate to enable; then authenticate to disable. For

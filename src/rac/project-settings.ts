@@ -122,13 +122,14 @@ export async function setRacEnabled(
 	options: {
 		dataRoot?: string;
 		authorize?: (change: RacConfigurationChange) => Promise<void>;
+		skipSystemAuth?: boolean;
 	} = {},
 ): Promise<RacProjectSettings> {
 	const dataRoot = options.dataRoot ?? racDataRoot();
 	const current = await loadRacSettings(root, dataRoot);
 	const path = await racSettingsLocation(current, dataRoot);
 	const settings: RacProjectSettings = { ...current, enabled };
-	await (options.authorize ?? authorizeRacChange)(settings);
+	if (!options.skipSystemAuth) await (options.authorize ?? authorizeRacChange)(settings);
 	const revalidated = await resolveRacProject(root);
 	if (revalidated.projectKey !== current.projectKey || (await racSettingsLocation(revalidated, dataRoot)) !== path) {
 		throw new RacProjectError("RAC project or data location changed during authorization.");

@@ -2,8 +2,10 @@
 
 The canonical local commands are `backlog rac enable` and `backlog rac disable`.
 They apply to the project selected by the existing CLI project resolver. Both
-require a fresh system authentication; there is no `--yes` or web configuration
-equivalent. RAC remains disabled by default. Enabling records local consent;
+use fresh system authentication by default. The explicit local
+`--skip-system-auth` flag skips that step, as requested by the user; it does not
+elevate OS privileges. There is no `--yes` or web configuration equivalent.
+RAC remains disabled by default. Enabling records local configuration;
 there is no RAC execution endpoint or agent process yet.
 
 ## Project identity and workspace
@@ -47,10 +49,11 @@ cwd. It validates the stored identity against that root. Missing settings mean
 disabled and do not create files. Malformed JSON, unknown fields, a different
 schema or mismatched identity fail closed. Repository configuration is not read.
 Neither `backlog/config.yml` nor the existing config API enables RAC. The writer
-authorizes before creating or modifying settings, revalidates the project and
-data location after authentication, then replaces the file using a private
+authenticates before creating or modifying settings unless the local caller
+explicitly supplies `--skip-system-auth`. It revalidates the project and
+data location before writing, then replaces the file using a private
 temporary file, file sync and atomic rename. Corrupt existing settings are not
-overwritten. Concurrent confirmed changes use the last completed write.
+overwritten. Concurrent changes use the last completed write.
 
 The dedicated data root must be outside the checkout and cannot be its ancestor.
 Symlinked data roots, per-project directories and settings files are rejected.
@@ -70,11 +73,28 @@ and credential isolation remain separate security gates documented in RAC-03.
 
 The user approved macOS LocalAuthentication with a fresh `LAContext`,
 `deviceOwnerAuthentication` and zero Touch ID reuse duration for each local
-enable/disable operation. The system handles Touch ID, Apple Watch or the user
+enable/disable operation by default. The system handles Touch ID, Apple Watch or the user
 password; the CLI does not collect passwords. Denial, cancellation, missing
 native tooling or unsupported platforms leave settings unchanged. No
 `--yes`, TTY detection, environment variable or browser request may bypass the
 authorization. This decision was explicitly reviewed under task-execution step 7.
+
+The user subsequently authorized an explicit exception:
+
+```bash
+backlog rac enable --skip-system-auth
+backlog rac disable --skip-system-auth
+```
+
+This local CLI option never invokes Swift or prompts for a password. It changes
+only the human-authentication step, retaining canonical project/path validation,
+external settings permissions and atomic writes. It is not stored in project
+settings or accepted from the repository config or a web request. The name does
+not imply administrator privileges: any process able to write the settings can
+use it, including an agent with those filesystem permissions. Human presence is
+therefore no longer an unconditional guarantee of enablement. Agent write
+isolation remains necessary. The option does not implement Windows ACL support,
+HTTP authorization or agent-operation approval bypasses.
 
 `src/rac/local-authorization.ts` embeds the fixed Swift helper in the Bun CLI
 bundle. It runs `/usr/bin/swift` from a private temporary directory with a private
@@ -87,8 +107,9 @@ temporary source/cache are removed afterwards. There is no persistent helper
 binary to install. Native authorization on other OSes remains unsupported.
 
 The internal writer accepts an authorizer dependency for tests. This is not a
-public SDK or an authorization capability; the production command always uses
-the system authorizer. Trusted host code and the external data directory must
+public SDK or an authorization capability; the production command uses
+the system authorizer unless the explicit local skip flag is present.
+Trusted host code and the external data directory must
 remain outside the executing agent's write permissions. This mechanism does
 not protect against arbitrary processes with unrestricted same-user host access.
 
@@ -108,12 +129,16 @@ invalid and relative paths, escaping symlinks, missing or malformed settings,
 private filesystem permissions, denied authorization without writes, successful
 enable/disable round trips, root changes during authorization and mismatched
 session/owner bindings. CLI tests cover help, project resolution and rejection of
-bypass/path options. These are shared model tests, not proof of HTTP
+unsupported/path options and parsing of the explicit skip flag. Tests also
+verify password-free enable/disable and unchanged validation in skip mode.
+These are shared model tests, not proof of HTTP
 authentication or native human presence.
 
 The restricted development session successfully type-checked the helper against
 the installed SDK, but a real authorization attempt stopped at
 `canEvaluatePolicy` with "System authentication is unavailable". The helper
-exited unsuccessfully and no configuration write was attempted. Positive native
-authentication and cancellation in a normal macOS Terminal remain a manual
-verification gate; RAC-05 must remain In Progress until that evidence is recorded.
+exited unsuccessfully and no configuration write was attempted. The user then
+observed and cancelled the native dialog, and subsequently entered a password.
+The actual local settings were read afterwards and showed `enabled: true` for
+this checkout, verifying successful enablement. This does not establish HTTP
+authentication or complete subsequent backend integration tasks.

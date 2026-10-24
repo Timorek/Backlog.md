@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-10-24T08:05:00Z'
-updated_date: '2026-10-24T17:34:00Z'
+updated_date: '2026-10-24T17:45:00Z'
 labels:
   - rac
   - m1-local-mvp
@@ -29,6 +29,8 @@ Dodaj konfigurację katalogów repozytoriów dostępnych agentowi. W MVP obsłu�
 
 Ustalenia po review ADR-0001 (2026-10-24; zaakceptowane przez użytkownika):
 Q1=A: MVP ma jeden kanoniczny root powiązany z projectKey; żądania klienta nie wskazują dowolnego projectId/cwd. Dodaj kanoniczne lokalne polecenia backlog rac enable/disable; ustawienia i zgoda na włączenie są poza repo, wymagają autoryzacji lokalnego człowieka. Repo config ani PUT /api/config nie mogą włączyć RAC lub osłabić polityki. Po przeniesieniu repo powstaje nowa historia (Q7g), bez relinkowania w MVP.
+
+Późniejsza jawna zmiana użytkownika: lokalne rac enable/disable otrzymują --skip-system-auth, pomijające systemowe potwierdzenie bez nadawania praw administratora OS. Zastępuje to poprzednie bezwarunkowe wymaganie obecności człowieka przy włączeniu. Domyślne komendy nadal wymagają potwierdzenia; ustawienia repo i API nie mogą ustawić bypassu. Proces z prawem zapisu konfiguracji może użyć flagi, również agent z takimi prawami.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
@@ -37,7 +39,7 @@ Q1=A: MVP ma jeden kanoniczny root powiązany z projectKey; żądania klienta ni
 - [ ] #2 Walidacja blokuje niezgodny projectKey, nieuprawnioną sesję oraz wyjście poza skonfigurowany katalog
 - [ ] #3 Backend nigdy nie używa ścieżki z payloadu żądania jako cwd
 - [x] #4 Testy obejmują nieprawidłowe i względne ścieżki
-- [ ] #5 CLI enable/disable jest dostarczone przed adapterem UI; repozytorium i agent nie mogą samodzielnie włączyć RAC
+- [x] #5 CLI enable/disable jest dostarczone przed adapterem UI; domyślnie wymaga autoryzacji systemowej. Jawna lokalna flaga --skip-system-auth pomija ten krok na żądanie użytkownika, bez nadawania uprawnień OS; konfiguracja repo i API nie mogą jej ustawić.
 - [ ] #6 Sesja, żądania i deskryptor właściciela są związane z projectKey kanonicznego root, bez wyboru dowolnej ścieżki z API
 <!-- AC:END -->
 
@@ -61,6 +63,8 @@ Q1=A: MVP ma jeden kanoniczny root powiązany z projectKey; żądania klienta ni
 8. Udokumentowac konfiguracje i ograniczenia zabezpieczen w docs/rac, uaktualnic ADR i task; zaznaczac tylko udowodnione AC. Lokalny commit po zakonczeniu; bez automatycznego push i bez nastepnego taska.
 
 Decision approved by user: macOS system authentication (Touch ID/account password) gates local enable/disable. Implement a fresh LAContext with no Touch ID reuse; compile/run only fixed embedded Swift source through absolute system tooling with a private temporary module cache and sanitized environment. No bypass CLI flags. Authorization failure leaves configuration unchanged. Implement atomic POSIX-private settings writes and tests with an injected internal test authorizer; production CLI always selects the native authorizer. Validate helper compilation and document that interactive system UI needs a normal Terminal if blocked by this session.
+
+User explicitly overrides the earlier mandatory native confirmation: add --skip-system-auth to local rac enable/disable (clearer than --admin; no OS elevation). Default calls still use native authentication. The flag skips only the native helper, retaining private external settings, canonical identity/path checks and atomic writes. It is not a web/repo config option and does not bypass Windows ACL requirements. Test default authorization, flag round trips and validation, then rebuild, document the changed trust boundary and commit locally.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -73,4 +77,6 @@ User approved native macOS authorization. Implemented backlog rac enable/disable
 User observed the native authentication dialog and cancelled it. Current local settings read enabled=false; successful native confirmation remains unverified. User explicitly declined persistent compiler caching as unnecessary for this rarely used operation; experimental cache changes were removed before commit. Keep the existing temporary helper/cache, fresh authentication and no bypass. Add only a CLI notice that opening the system dialog may take tens of seconds.
 
 Follow-up verification after removing cache optimization: 5 CLI tests / 12 assertions PASS, CLI rebuild PASS, Biome for the changed CLI file PASS, git diff --check PASS. Only the startup-delay notice and this task record differ from the previous commit. No native authorization or settings behavior changed.
+
+Added --skip-system-auth (recommended clearer name than --admin) to both local enable/disable commands at explicit user request. Default still invokes the native authorizer; skip mode never invokes it, keeps path/root/private-file/atomic-write checks, and grants no OS elevation. No repo config, web flag, permanent compiler cache or Windows ACL bypass. Updated ADR, AGENTS.md and development/config docs to remove the old unconditional human-presence guarantee. Tests: CLI/default-versus-skip round trips plus writer guards; 125 tests / 424 assertions across 5 RAC files PASS; types 565 files PASS, Biome 493 files PASS, source build and compiled help PASS, diff check PASS. Earlier user password entry was verified via actual local enabled=true, but no real project setting was changed during these flag tests. Remaining backend integration ACs stay unchecked; no next task or push.
 <!-- SECTION:NOTES:END -->

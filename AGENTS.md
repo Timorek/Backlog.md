@@ -179,6 +179,7 @@ If the user specifies a task, work on that task instead, while honoring its depe
 - Obtain permission for destructive Git operations. Keep changes within the task scope.
 - Do not run agents with unlimited permissions or expose an unsecured command-execution API.
 - Keep secrets and tokens out of the repository. Use explicit workspace allowlists and bounded sandbox/approval policies.
+- Local `rac enable/disable` uses system authentication by default. The user explicitly approved `--skip-system-auth` as a CLI-only bypass; it does not elevate OS privileges or bypass filesystem, HTTP or agent-operation policies. Do not enable RAC automatically as part of implementing a task.
 - Never push automatically; require an explicit user instruction to push.
 - Keep the existing dashboard on loopback until backend authentication, authorization and CSRF protections are verified. Do not publish raw Codex App Server or runner endpoints.
 
