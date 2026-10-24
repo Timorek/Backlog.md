@@ -11,6 +11,8 @@ import { loadTaskDetail } from "../core/task-detail.ts";
 import { isCreateLockError, isTaskLockError } from "../file-system/operations.ts";
 import { BacklogToolError } from "../mcp/errors/mcp-errors.ts";
 import { MilestoneHandlers } from "../mcp/tools/milestones/handlers.ts";
+import { type RacOwner, type RacSession, validateRacContext } from "../rac/project-context.ts";
+import { loadRacSettings } from "../rac/project-settings.ts";
 import {
 	type ContentRecordKind,
 	DOCUMENT_TYPE_VALUES,
@@ -248,6 +250,7 @@ export async function findNextAvailablePort(startPort: number, maxPort = MAX_POR
 
 export class BacklogServer {
 	private core: Core;
+	private readonly racDataRoot?: string;
 	private server: Server<unknown> | null = null;
 	private runtimeWorkingDirectory: string | null = null;
 	private projectName = "Untitled Project";
@@ -262,8 +265,15 @@ export class BacklogServer {
 	private pendingDataBroadcastScope: "tasks" | "milestones" = "tasks";
 	private storeReadyBroadcasted = false;
 
-	constructor(projectPath: string) {
+	constructor(projectPath: string, options: { racDataRoot?: string } = {}) {
 		this.core = new Core(projectPath, { enableWatchers: true });
+		this.racDataRoot = options.racDataRoot;
+	}
+
+	// Callers must supply authenticated server-side session and lock-backed owner records, never request JSON.
+	async authorizeRacWorkspace(owner: RacOwner, session: RacSession | undefined): Promise<string> {
+		const settings = await loadRacSettings(this.core.filesystem.rootDir, this.racDataRoot);
+		return validateRacContext(settings, owner, session);
 	}
 
 	private async resolveMilestoneInput(milestone: string): Promise<string> {

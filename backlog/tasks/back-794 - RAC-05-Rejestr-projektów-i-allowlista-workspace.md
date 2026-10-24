@@ -1,11 +1,11 @@
 ---
 id: BACK-794
 title: '[RAC-05] Rejestr projektów i allowlista workspace'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-10-24T08:05:00Z'
-updated_date: '2026-10-24T17:45:00Z'
+updated_date: '2026-10-24T17:59:00Z'
 labels:
   - rac
   - m1-local-mvp
@@ -35,12 +35,12 @@ Późniejsza jawna zmiana użytkownika: lokalne rac enable/disable otrzymują --
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Backend odczytuje jedną skonfigurowaną ścieżkę projektu
-- [ ] #2 Walidacja blokuje niezgodny projectKey, nieuprawnioną sesję oraz wyjście poza skonfigurowany katalog
-- [ ] #3 Backend nigdy nie używa ścieżki z payloadu żądania jako cwd
+- [x] #1 Backend odczytuje jedną skonfigurowaną ścieżkę projektu
+- [x] #2 Walidacja blokuje niezgodny projectKey, nieuprawnioną sesję oraz wyjście poza skonfigurowany katalog
+- [x] #3 Backend nigdy nie używa ścieżki z payloadu żądania jako cwd
 - [x] #4 Testy obejmują nieprawidłowe i względne ścieżki
 - [x] #5 CLI enable/disable jest dostarczone przed adapterem UI; domyślnie wymaga autoryzacji systemowej. Jawna lokalna flaga --skip-system-auth pomija ten krok na żądanie użytkownika, bez nadawania uprawnień OS; konfiguracja repo i API nie mogą jej ustawić.
-- [ ] #6 Sesja, żądania i deskryptor właściciela są związane z projectKey kanonicznego root, bez wyboru dowolnej ścieżki z API
+- [x] #6 Sesja, żądania i deskryptor właściciela są związane z projectKey kanonicznego root, bez wyboru dowolnej ścieżki z API
 <!-- AC:END -->
 
 ## Definition of Done
@@ -53,18 +53,12 @@ Późniejsza jawna zmiana użytkownika: lokalne rac enable/disable otrzymują --
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-1. Potwierdzic gotowosc BACK-794 i Done zaleznosci; zapisac In Progress i @codex przed implementacja. Zachowac obecny fork i galaz; bez PR do upstreamu.
-2. Zbadac wzorzec rejestracji komend CLI, konwencje bezpiecznych zapisow oraz punkty styku RAC. Utrwalic decyzje lokalnej autoryzacji czlowieka przed implementacja zależnej czesci: sam --yes/TTY/zmienna srodowiskowa nie dowodzi obecnosci czlowieka.
-3. Zaimplementowac kanoniczny absolutny root przez realpath+stat i projectKey SHA-256; jeden root na konfiguracje, brak rejestru wielu projektow. Odrzucac relative paths, traversal, symlinki poza root i dane/config pod checkoutem. Zapis lokalny poza repo, domyslnie RAC off; przeniesione repo nowa historia.
-4. Dodac minimalny lokalny magazyn settings.json z walidacja schematu/root/key i ograniczonymi prawami. Nie uzywac backlog/config.yml do wlaczania RAC; uszkodzona/niewiarygodna konfiguracja fail closed. Zapis konfiguracji dopiero po rzeczywistej lokalnej autoryzacji czlowieka.
-5. Dostarczyc kanoniczne backlog rac enable/disable w CLI bez flag omijajacych autoryzacje; pozostałe platformy bez bezpiecznej implementacji auth odmawiaja zamiast wlaczac bez ochrony. Implementacja konkretnego mechanizmu wymaga zaakceptowanej decyzji. Nie uruchamiac agenta ani endpointu wykonawczego.
-6. Dostarczyc wspolna walidacje kontekstu projektu/sesji/wlasciciela: projekt tylko z konfiguracji, zgodny projectKey i generacja, zadne cwd/path/projectId z body nie staje sie cwd. To kontrakt dla przyszlego backendu, nie gotowy mechanizm loginu/API.
-7. Testy: kanonizacja, zle i wzgledne sciezki, traversal/symlink escapes, off/disabled/niepoprawne JSON, odmowa auth bez zapisu, sesje innych projektow/generacji, ignorowanie/odrzucanie klientowego cwd oraz komendy/help CLI. Uruchomic dobrane testy, types, Biome i build.
-8. Udokumentowac konfiguracje i ograniczenia zabezpieczen w docs/rac, uaktualnic ADR i task; zaznaczac tylko udowodnione AC. Lokalny commit po zakonczeniu; bez automatycznego push i bez nastepnego taska.
-
-Decision approved by user: macOS system authentication (Touch ID/account password) gates local enable/disable. Implement a fresh LAContext with no Touch ID reuse; compile/run only fixed embedded Swift source through absolute system tooling with a private temporary module cache and sanitized environment. No bypass CLI flags. Authorization failure leaves configuration unchanged. Implement atomic POSIX-private settings writes and tests with an injected internal test authorizer; production CLI always selects the native authorizer. Validate helper compilation and document that interactive system UI needs a normal Terminal if blocked by this session.
-
-User explicitly overrides the earlier mandatory native confirmation: add --skip-system-auth to local rac enable/disable (clearer than --admin; no OS elevation). Default calls still use native authentication. The flag skips only the native helper, retaining private external settings, canonical identity/path checks and atomic writes. It is not a web/repo config option and does not bypass Windows ACL requirements. Test default authorization, flag round trips and validation, then rebuild, document the changed trust boundary and commit locally.
+1. Resolve the current project through the existing CLI/Core root. Canonicalize the root with realpath, derive SHA-256 projectKey and reject invalid/relative/traversal paths and escaping workspace symlinks.
+2. Load strict, private, external settings; default to disabled. Keep repository config and the config API unable to enable RAC or set the CLI bypass. Use atomic writes and revalidate identities.
+3. Provide local rac enable/disable. Default to fresh macOS LocalAuthentication; per later explicit user instruction, allow --skip-system-auth without OS elevation. Keep Windows ACL access fail-closed. Do not add a persistent compiler cache.
+4. Wire BacklogServer.authorizeRacWorkspace to fresh local settings reads for the root held by its Core. Validate already-authenticated server-side session and owner records against projectKey/root/generation; return only the configured cwd. Do not accept a request-selected path.
+5. Verify this actual backend boundary without opening sockets: disabled/revoked settings, missing or mismatched session, stale owner, malicious extra path fields, another server/project, root symlink replacement and escaping paths; verify PUT /api/config cannot enable RAC. Keep actual session issuance, lock acquisition and execution routes in RAC-07/08 as previously scoped.
+6. Run RAC and ordinary dashboard-handler regressions, type checks, Biome and build. Record user-verified native enablement and the trust boundary in docs/rac. Check proven AC, set Done, and commit only this task locally. Do not start RAC-06 or push automatically.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -79,4 +73,18 @@ User observed the native authentication dialog and cancelled it. Current local s
 Follow-up verification after removing cache optimization: 5 CLI tests / 12 assertions PASS, CLI rebuild PASS, Biome for the changed CLI file PASS, git diff --check PASS. Only the startup-delay notice and this task record differ from the previous commit. No native authorization or settings behavior changed.
 
 Added --skip-system-auth (recommended clearer name than --admin) to both local enable/disable commands at explicit user request. Default still invokes the native authorizer; skip mode never invokes it, keeps path/root/private-file/atomic-write checks, and grants no OS elevation. No repo config, web flag, permanent compiler cache or Windows ACL bypass. Updated ADR, AGENTS.md and development/config docs to remove the old unconditional human-presence guarantee. Tests: CLI/default-versus-skip round trips plus writer guards; 125 tests / 424 assertions across 5 RAC files PASS; types 565 files PASS, Biome 493 files PASS, source build and compiled help PASS, diff check PASS. Earlier user password entry was verified via actual local enabled=true, but no real project setting was changed during these flag tests. Remaining backend integration ACs stay unchecked; no next task or push.
+
+Completion evidence for remaining RAC-05 criteria:
+AC1: actual BacklogServer.authorizeRacWorkspace loads settings from its existing Core root on every call; enable/disable/revocation and second-project cases pass.
+AC2: backend integration tests reject missing sessions, different projectKey/root and stale owner generation; workspace resolver rejects traversal/symlink escapes. Session records must already be authenticated server-side; this task does not claim login/session issuance.
+AC3: the backend guard has no client cwd/path/projectId parameter, returns only configured canonicalRoot; malicious extra request-like fields do not change the returned cwd.
+AC6: the real backend validates the trusted session and owner records against its configured project identity and generation. Lock acquisition and authenticated HTTP dispatch are explicit caller obligations for RAC-07/08, not implemented or claimed here.
+AC4/5 remain verified from earlier path and CLI tests, including the explicitly user-approved skip-system-auth option. Existing config handler test proves its payload cannot enable RAC or apply that option.
+Verification: 137 tests, 464 assertions across 8 files PASS (RAC plus ordinary server init/task-project handlers); types 566 files PASS; Biome 494 files PASS; CLI build PASS; diff check PASS. Native enablement was previously confirmed by reading enabled=true after user entered their password. No RAC endpoint or agent process was added. Groma is still unavailable; its files were not changed. RAC-06 has not been started.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Completed local RAC project configuration and integrated the workspace authorization boundary into BacklogServer. Fresh settings reads bind canonical cwd, projectKey, authenticated session record and owner generation; invalid identities, revocation and path escapes are rejected. Local enable/disable defaults to macOS authentication with the explicitly approved skip-system-auth exception. 137 scoped tests, types, lint and build pass. Runtime login, lock ownership and execution endpoints remain in RAC-07/08; matching fields alone are not authentication. No push or RAC-06 work.
+<!-- SECTION:FINAL_SUMMARY:END -->

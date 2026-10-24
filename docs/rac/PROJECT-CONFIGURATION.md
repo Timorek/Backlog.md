@@ -30,6 +30,19 @@ server-side authentication store and the owner from actual ownership, rather
 than deserializing either from a request. HTTP authentication, descriptor
 authentication, lock acquisition and handler wiring belong to subsequent tasks.
 
+The actual backend exposes `BacklogServer.authorizeRacWorkspace(owner, session)`
+as the shared guard for future RAC handlers. It loads local settings on every
+call using only the root held by the existing `Core` instance. Disabling RAC
+therefore takes effect on the next authorization without a backend restart.
+No request body or client path is accepted by this method. Its optional data
+directory is trusted server-construction input, not a browser parameter.
+
+Session authentication and actual lock ownership must be established by the
+caller before invoking this guard. Matching record fields alone do not prove
+either. RAC-05 verifies the root/identity boundary inside the backend; RAC-07/08
+must provide real ownership and authenticated request handling before any
+execution route is exposed.
+
 ## Local settings
 
 `src/rac/project-settings.ts` reads `settings.json` below the OS-specific data
@@ -133,6 +146,13 @@ unsupported/path options and parsing of the explicit skip flag. Tests also
 verify password-free enable/disable and unchanged validation in skip mode.
 These are shared model tests, not proof of HTTP
 authentication or native human presence.
+
+`server-rac-workspace.test.ts` also exercises the real backend method without
+opening sockets: fresh enable/disable reads, missing/mismatched sessions and
+owners, stale generation, ignored request-like path fields, a second project,
+root symlink replacement and escaping workspace paths. A direct test of the
+existing config API proves that repository config updates cannot enable RAC or
+apply the local CLI skip flag.
 
 The restricted development session successfully type-checked the helper against
 the installed SDK, but a real authorization attempt stopped at
