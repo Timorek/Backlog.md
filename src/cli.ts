@@ -20,6 +20,7 @@ import {
 } from "./commands/help-schema.ts";
 import { registerInstructionsCommand } from "./commands/instructions.ts";
 import { registerMcpCommand } from "./commands/mcp.ts";
+import { registerRacCommand } from "./commands/rac.ts";
 import { pickTaskForEditWizard, runTaskCreateWizard, runTaskEditWizard } from "./commands/task-wizard.ts";
 import { watchJson } from "./commands/watch-json.ts";
 import { DEFAULT_DIRECTORIES, DEFAULT_FILES, DEFAULT_STATUSES } from "./constants/index.ts";
@@ -6166,6 +6167,8 @@ registerCompletionCommand(program);
 
 // Instructions command group
 registerInstructionsCommand(program);
+
+registerRacCommand(program, requireProjectRoot);
 
 // MCP command group
 registerMcpCommand(program);

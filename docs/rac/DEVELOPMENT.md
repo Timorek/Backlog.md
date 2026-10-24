@@ -66,6 +66,28 @@ Dry-run reads all CLI task pages and checks duplicate RAC prefixes and dependenc
 
 ## Quality commands
 
+### Local RAC configuration
+
+From this checkout, using the source CLI:
+
+```bash
+bun src/cli.ts rac enable
+bun src/cli.ts rac disable
+```
+
+Both commands display macOS system authentication (Touch ID/account password).
+Cancellation leaves settings unchanged. Apple Command Line Tools are required;
+authorization on other OSes fails closed. Settings are outside Git under the
+project's canonical path hash. Enabling does not start an agent or add UI buttons.
+See [project configuration](PROJECT-CONFIGURATION.md) for the trust boundaries.
+
+Manual verification: cancel an enable attempt and check that no settings were
+created; repeat and authenticate to enable; then authenticate to disable. For
+existing settings, cancellation must preserve the file's contents. A restricted
+agent session cannot substitute for this system-dialog check in a normal Terminal.
+
+### Checks
+
 ```bash
 bun run check:types
 bun run check
