@@ -139,6 +139,16 @@ result is [rac-06-local.json](spikes/rac-06-local.json). This is not a successfu
 real-provider test and is not replaced by RAC-03's older ProbeRpc result.
 RAC-06 remains **In Progress** until the real-provider gate is verified.
 
+A subsequent [user Terminal attempt](spikes/rac-06-terminal.json) reached
+initialize successfully but was stopped by `policy_mismatch` before a model
+turn. The parent exited on EOF and the owned group was confirmed stopped after
+escalation (`forced: true`). This proves real startup/shutdown, but does not prove
+that the provider's effective policy matches RAC's restrictions. The smoke JSON
+now includes `policyChecks`: a named boolean for each expected constraint, with
+no raw configuration, paths or secrets. Any false check still blocks execution.
+When diagnosing this failure, run the default probe first; `--live` is not
+needed to inspect thread policy.
+
 Run in a normal macOS Terminal from this checkout:
 
 ```bash

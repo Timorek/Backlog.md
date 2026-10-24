@@ -3,7 +3,7 @@ import { mkdtemp, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { CodexAdapter } from "../rac/codex-adapter.ts";
-import { type CodexProtocolEvent, type RpcRecord, rpcRecord } from "../rac/codex-rpc.ts";
+import { CodexError, type CodexProtocolEvent, type RpcRecord, rpcRecord } from "../rac/codex-rpc.ts";
 import { MockCodexTransport } from "../rac/testing/mock-codex-transport.ts";
 
 let workspace: string;
@@ -121,6 +121,27 @@ for (const change of [
 		expect(transport.messages.some((message) => message.method === "turn/start")).toBe(false);
 	});
 }
+
+test("policy diagnostics identify failing checks without leaking paths or raw configuration", async () => {
+	await connected(
+		transportFixture((policy) => {
+			policy.cwd = "/synthetic-private-path";
+			rpcRecord(policy.sandbox).excludeTmpdirEnvVar = false;
+		}),
+	);
+	let failure: unknown;
+	try {
+		await adapter?.startThread();
+	} catch (error) {
+		failure = error;
+	}
+	expect(failure).toBeInstanceOf(CodexError);
+	const checks = (failure as CodexError).policyChecks;
+	expect(checks).toMatchObject({ cwdMatches: false, tmpdirExcluded: false, networkDisabled: true });
+	expect(Object.values(checks ?? {}).every((value) => typeof value === "boolean")).toBe(true);
+	expect(JSON.stringify(checks)).not.toContain("synthetic-private-path");
+	expect(JSON.stringify(checks)).not.toContain(workspace);
+});
 
 test("requires a loaded thread, steers the exact active turn, and starts a new turn only after completion", async () => {
 	const transport = await connected();

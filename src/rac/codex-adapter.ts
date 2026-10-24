@@ -127,21 +127,25 @@ export class CodexAdapter {
 	}
 	private verifyPolicy(response: RpcRecord): void {
 		const sandbox = rpcRecord(response.sandbox);
-		if (
-			response.cwd !== this.workspace ||
-			response.approvalPolicy !== "on-request" ||
-			response.approvalsReviewer !== "user" ||
-			sandbox.type !== "workspaceWrite" ||
-			sandbox.networkAccess !== false ||
-			sandbox.excludeSlashTmp !== true ||
-			sandbox.excludeTmpdirEnvVar !== true ||
-			(response.runtimeWorkspaceRoots !== undefined &&
-				(!Array.isArray(response.runtimeWorkspaceRoots) ||
-					response.runtimeWorkspaceRoots.some((root) => root !== this.workspace))) ||
-			!Array.isArray(sandbox.writableRoots) ||
-			sandbox.writableRoots.some((root) => root !== this.workspace)
-		) {
-			throw new CodexError("policy_mismatch", "Effective Codex policy differs from the restricted RAC policy");
+		const checks = {
+			cwdMatches: response.cwd === this.workspace,
+			approvalPolicyOnRequest: response.approvalPolicy === "on-request",
+			reviewerIsUser: response.approvalsReviewer === "user",
+			workspaceWriteSandbox: sandbox.type === "workspaceWrite",
+			networkDisabled: sandbox.networkAccess === false,
+			slashTmpExcluded: sandbox.excludeSlashTmp === true,
+			tmpdirExcluded: sandbox.excludeTmpdirEnvVar === true,
+			runtimeRootsMatch:
+				response.runtimeWorkspaceRoots === undefined ||
+				(Array.isArray(response.runtimeWorkspaceRoots) &&
+					response.runtimeWorkspaceRoots.every((root) => root === this.workspace)),
+			writableRootsMatch:
+				Array.isArray(sandbox.writableRoots) && sandbox.writableRoots.every((root) => root === this.workspace),
+		};
+		if (!Object.values(checks).every(Boolean)) {
+			const error = new CodexError("policy_mismatch", "Effective Codex policy differs from the restricted RAC policy");
+			error.policyChecks = checks;
+			throw error;
 		}
 	}
 	private async loadThread(method: "thread/start" | "thread/resume", params: RpcRecord): Promise<string> {

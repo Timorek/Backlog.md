@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-10-24T08:05:00Z'
-updated_date: '2026-10-24T18:37:00Z'
+updated_date: '2026-10-24T18:44:00Z'
 labels:
   - rac
   - m1-local-mvp
@@ -20,6 +20,7 @@ dependencies:
 documentation:
   - docs/rac/decisions/0001-rac-architecture.md
   - docs/rac/CODEX-ADAPTER.md
+  - docs/rac/spikes/rac-06-terminal.json
 priority: high
 ordinal: 405000
 ---
@@ -35,7 +36,7 @@ Runtime to Bun/TypeScript w istniejącym Backlog.md. Używaj jawnego --listen st
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Adapter uruchamia app-server i kończy proces po shutdown
+- [x] #1 Adapter uruchamia app-server i kończy proces po shutdown
 - [x] #2 JSON-RPC requests i responses korelują po id
 - [x] #3 Rozłączenie i crash procesu są wykrywane
 - [x] #4 stdout zdarzeń nie jest traktowane jako polecenia shella
@@ -63,6 +64,8 @@ Runtime to Bun/TypeScript w istniejącym Backlog.md. Używaj jawnego --listen st
 6. Test adapter/protocol with an in-memory transport: chunked/malformed/oversized JSONL, IDs, timeouts, allowed methods, policy mismatch, requests/responses, EOF/crash/restart and event ordering. Reject broad session grants and unsupported server requests immediately. Keep persistence and human authorizations outside this adapter.
 7. Attempt a no-model real App Server initialize/thread-policy probe; record environment failures honestly. Add a copyable Terminal smoke command if native Codex remains blocked. Do not mark real-provider or cleanup AC proven by mocks alone.
 8. Run targeted tests, existing RAC regressions, types, Biome and build. Document protocol/schema/OS and cleanup limits in docs/rac; update only proven AC, prepare scoped local commit, no push or next RAC task.
+
+Real Terminal smoke reached initialize but failed strict thread policy verification (policy_mismatch), with no model turn and successful process-group cleanup. Add sanitized per-field policy check diagnostics to the adapter error and smoke JSON so the actual mismatch can be identified; retain every restriction. Record this failed real-provider attempt separately and keep AC1/6 open until the mismatch is understood and a real probe succeeds.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -73,4 +76,6 @@ Evidence by criterion: AC2 out-of-order and typed RPC IDs verified; AC3 crash/st
 AC1 and AC6 remain unchecked: real Codex 0.162.1 was spawned from the fixed absolute installation path with the adapter environment, but stopped before initialize with permissionDenied=true in this restricted session. Synthetic Bun process tests do not establish a successful real App Server handshake, effective policy or EOF shutdown. Current status remains In Progress pending normal-Terminal smoke verification. Script: scripts/rac/codex-adapter-smoke.ts, default no-model check plus --live --model gpt-6.1-sol for a synthetic completed and interrupted turn. No real project task is executed and approvals are declined. See docs/rac/CODEX-ADAPTER.md and sanitized local/schema artifacts.
 Final checks: 190 tests / 603 assertions across 12 files PASS, including RAC-03 and RAC-05/server regressions; type check 574 files PASS; Biome 504 files PASS; normal CLI build and standalone Bun adapter bundle PASS; git diff --check PASS. Native Windows containment is fail-closed; Linux not validated. Process-group proof does not cover children that escape via setsid. Manager authorization, owner lock, interaction persistence, HTTP endpoints and UI remain later task responsibilities.
 The task already had In Progress/@codex metadata and a changed ordinal at start. Preserve the existing ordinal change outside the scoped code commit. Groma is unavailable (command not found); no Groma-owned files touched. No push or next RAC task.
+
+User ran the real adapter in normal macOS Terminal: initialize=true; threadPolicy=false; error=policy_mismatch; permissionDenied=false; authenticationFailed=false; shutdown exitedOnEof=true, forced=true, groupStopped=true. This now proves AC1 real App Server startup and shutdown, so AC1 is checked. It does not prove a compatible effective policy or successful model execution; task remains In Progress and AC6 is still open. Saved the exact sanitized outcome in docs/rac/spikes/rac-06-terminal.json. Improved policy_mismatch errors and the smoke JSON with named boolean policyChecks, without raw paths/configuration/tokens; every previous policy restriction is retained. Added a diagnostic/redaction regression test. Types 574 files, Biome 505 files and standalone adapter bundle pass; targeted adapter/RPC/native-process tests pass. Next user probe should omit --live: thread policy can be diagnosed without starting a model turn.
 <!-- SECTION:NOTES:END -->

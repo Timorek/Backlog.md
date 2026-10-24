@@ -44,6 +44,7 @@ export type CodexProtocolEvent =
 
 export class CodexError extends Error {
 	diagnostics?: { permissionDenied: boolean; authenticationFailed: boolean };
+	policyChecks?: Readonly<Record<string, boolean>>;
 	constructor(
 		readonly code: string,
 		message: string,
