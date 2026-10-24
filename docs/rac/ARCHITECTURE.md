@@ -48,3 +48,7 @@ For an upstream update: start from a clean committed feature branch, `git fetch 
 ## Review and delivery boundaries
 
 RAC-01 is complete after user verification of the source dashboard on port 6421. RAC-02 records the reviewed ADR and user answers Q1–Q7. Later tasks must use the updated requirements and the ADR's task-impact table: no queue before RAC-23; one Idempotency-Key policy; whole-run retention and truncated events; no migration table or separate Message table. RAC-03 validates provisional Codex behavior; material deviations require a new review. Follow the ADR's task-by-task delivery and security gates; do not start another RAC task automatically.
+
+## RAC-04 run-state contract
+
+The first internal RAC code is documented in [RUN-STATE.md](RUN-STATE.md): immutable run records, lifecycle transitions, derived waiting, explicit unknown resolution, pure single-slot admission and a deterministic test mock. It does not add execution endpoints, storage or UI. Atomic reservation and authorization remain caller responsibilities in the later runtime tasks.
