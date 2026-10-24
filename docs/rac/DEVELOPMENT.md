@@ -27,17 +27,17 @@ The lockfile and package versions were unchanged. Binaries, dependency cache and
 With the PATH above, run in a normal macOS Terminal:
 
 ```bash
-bun run cli browser --no-open --port 6420
+bun run cli browser --no-open --port 6421
 ```
 
-Open <http://127.0.0.1:6420/board>. The CLI prints the actual port and can choose the next free one when 6420 is occupied. Stop with Ctrl+C. To open a browser automatically, omit `--no-open`.
+Open <http://127.0.0.1:6421/board>. Port 6420 is used by another project on this Mac. Use 6421 for this fork. The CLI prints the actual port and can choose the next free one if needed. Stop with Ctrl+C. To open a browser automatically, omit `--no-open`.
 
 The package script invokes `bun src/cli.ts`; `browser` constructs `BacklogServer` from `src/server/index.ts`, which imports `src/web/index.html`. This path uses the fork's source, not `/opt/homebrew/bin/backlog` (global version 1.55.2). Source CLI reports 1.55.3. `scripts/cli.cjs` is the packaged launcher and is not the development entry point.
 
 ## Development refresh
 
 ```bash
-NODE_ENV=development bun --watch src/cli.ts browser --no-open --port 6420
+NODE_ENV=development bun --watch src/cli.ts browser --no-open --port 6421
 ```
 
 The current server passes `development: process.env.NODE_ENV === "development"` to Bun. This selects Bun's development HTML handling; `--watch` restarts the process when server dependencies change. Task Markdown updates use the existing `ContentStore`/watchers and dashboard WebSocket, independently of source refresh. No Vite server or second frontend is needed.
@@ -77,11 +77,13 @@ node --test scripts/update-nix.test.cjs
 
 `bun run check` is read-only; `bun run lint` writes fixes and should not be used for a broad unrelated cleanup. The current repository's Biome config excludes TSX from the main check; DOM tests still cover those components. Run Node-specific tests with native Node when their fixtures depend on Node's version/runtime; `bun test` also discovers `.test.cjs` files but is not native Node.
 
-## Browser acceptance still required
+## Browser verification
 
 This agent session cannot bind local TCP sockets: Python loopback bind returns `PermissionError: [Errno 1] Operation not permitted`; CLI reports no available port. This is an environment restriction, not proof of a broken dashboard. The source build succeeds and scoped DOM/dependency tests pass, but they do not replace HTTP/browser checks.
 
-After starting the source server in Terminal:
+User verification: the source dashboard runs on 6421, and the user confirmed steps 1–4 below. Steps 5–6 (refresh/HMR and viewport checks) remain unverified. The status round-trip used In Progress during verification; RAC-01 was subsequently marked Done.
+
+Checklist:
 
 1. Filter the existing board/tasks view by label `rac` and confirm all 28 tasks appear, including `BACK-790` and `BACK-817`.
 2. Open `BACK-790`; inspect description, plan, criteria and the dependency graph. Open `BACK-791` and verify it depends on `BACK-790`.

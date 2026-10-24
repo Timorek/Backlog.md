@@ -82,4 +82,4 @@ Preserve package identity, task schema, routes and current defaults; keep RAC op
 
 ## Review gates
 
-RAC-01 remains active until local dashboard interaction is verified. RAC-02 decides persistence, transport, authentication boundaries and cross-platform scope. RAC-03 validates the installed App Server protocol and genuine question/approval behavior without unlimited permissions. No later RAC task is implemented by this preparation.
+RAC-01 is complete after the user confirmed local dashboard interaction on port 6421. RAC-02 decides persistence, transport, authentication boundaries and cross-platform scope. RAC-03 validates the installed App Server protocol and genuine question/approval behavior without unlimited permissions. No later RAC task is implemented by this preparation.

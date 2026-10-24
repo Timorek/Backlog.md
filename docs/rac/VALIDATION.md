@@ -24,7 +24,7 @@ Tools: macOS arm64; pre-existing Node 25.6.1 and global Backlog 1.55.2. Setup us
 | Import field integrity | PASS | CLI JSON task views compared against package: descriptions (RAC-01 adapted for existing fork), priorities, labels, all acceptance criterion text, original plans and mapped dependencies. RAC-01's original plan was subsequently replaced with the requested researched plan. |
 | Repeat import | PASS | Existing task mapping found for all 28, no duplicate creation or dependency mutation. |
 | RAC instructions | PASS | Original AGENTS.md content preserved verbatim; dedicated RAC section appended. CLI-first semantics, desktop-first posture and imported-plan exception made explicit. |
-| Live dashboard and HTTP | BLOCKED | Session denies loopback TCP bind, including port 0. Dashboard command cannot start. No browser or HTTP success is claimed. |
+| Live dashboard and HTTP | PASS (user verified) | User started the source dashboard on 6421 (6420 belongs to another project), then confirmed the requested checks: 28 RAC tasks, task details, BACK-791 dependency on BACK-790, reversible description/status editing. Agent-side TCP bind remains restricted. |
 | Live HMR / watcher refresh | NOT VERIFIED | Source supports development mode; real browser refresh/reconnect must be checked outside the restricted session. |
 
 Scoped command:
@@ -33,7 +33,7 @@ Scoped command:
 bun test --timeout=10000 src/web src/test/web-*.test.tsx src/test/dependency.test.ts src/test/dependency-graph.test.ts
 ```
 
-The DOM suite exercises existing board/detail/editing/dependency components. It does not prove that the 28 imported tasks render through a live HTTP server. Use the browser checklist in `DEVELOPMENT.md` for that remaining acceptance step.
+The DOM suite exercises existing board/detail/editing/dependency components. It does not prove that the 28 imported tasks render through a live HTTP server. The user subsequently confirmed the browser checklist items for task visibility, details, dependencies and reversible description/status editing on port 6421. HMR remains unverified.
 
 ## Baseline failures, not fixed by setup
 
@@ -46,7 +46,7 @@ Independent bind reproduction: `python3 -m http.server 18764 --bind 127.0.0.1 ..
 
 ## Durable outcome and outstanding work
 
-`RAC-01` / `BACK-790` is assigned to `@codex` and remains **In Progress**. Its plan names existing extension points, validation, upstream workflow and remaining browser/HMR checks. No future RAC task was started. Acceptance criterion 1 (dashboard actually running on the Mac) is not satisfied in this session and must remain unchecked. Other audit criteria can be checked against these records, but the task must not be marked Done until browser checks pass.
+`RAC-01` / `BACK-790` is assigned to `@codex` and is **Done** after user-confirmed dashboard verification on port 6421. All four acceptance criteria are satisfied: the running dashboard was verified by the user, baseline failures are documented, extension points are mapped, and the upstream update procedure is recorded. No future RAC task was started. Live HMR/reconnection and narrow-screen checks were not part of the user confirmation and remain unverified; no success is claimed for them.
 
 The architecture is a proposal: existing Bun backend plus optional in-process RAC manager, canonical shared CLI/API semantics, Codex stdio adapter, existing React UI, separate operational run history, and authentication before remote exposure. RAC-02 reviews those decisions after RAC-01 is verified.
 
