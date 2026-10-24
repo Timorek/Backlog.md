@@ -4,7 +4,7 @@ title: '[RAC-18] Autoryzacja aplikacji i zabezpieczenie API'
 status: To Do
 assignee: []
 created_date: '2026-10-24T08:05:00Z'
-updated_date: '2026-10-24T08:06:00Z'
+updated_date: '2026-10-24T10:22:00Z'
 labels:
   - rac
   - m3-remote-access
@@ -15,6 +15,8 @@ dependencies:
   - BACK-797
   - BACK-803
   - BACK-805
+documentation:
+  - docs/rac/decisions/0001-rac-architecture.md
 priority: high
 ordinal: 417000
 ---
@@ -23,6 +25,9 @@ ordinal: 417000
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
 Dodaj warstwę autoryzacji backendu dla wszystkich endpointów RAC: polityka single-user, obsługa zaufanej tożsamości z reverse proxy z walidacją tokenu/headerów, CSRF dla mutacji, secure cookies jeśli stosowane, ograniczenie origin, rate limiting, audyt. Nie akceptuj niezweryfikowanych nagłówków tożsamości od klienta; odrzuć ruch spoza zaufanego proxy. Wybierz i udokumentuj konkretny model sesji.
+
+Ustalenia po review ADR-0001 (2026-10-24; zaakceptowane przez użytkownika):
+Auth obejmuje cały istniejący dashboard/API, WebSocket i SSE. Cookie nie izoluje portów: sesja związana z projectKey i generacją, test kolizji/wycieku między projektami. Tunel wymaga osobnego listenera z walidacją JWT gatewaya albo jednolitego uwierzytelnienia wszystkich żądań; nie rozpoznawaj zdalnego ruchu wyłącznie z IP loopback lub Host. Żaden poświadczeniowy kanał decisions nie jest osiągalny z sandboxa.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
@@ -32,6 +37,8 @@ Dodaj warstwę autoryzacji backendu dla wszystkich endpointów RAC: polityka sin
 - [ ] #3 Zaufanie do tożsamości z Access jest weryfikowane po stronie serwera
 - [ ] #4 Rate limit ogranicza próby i spam requestami
 - [ ] #5 Testy obejmują brak i podrobione uwierzytelnienie
+- [ ] #6 Testowany jest pełny zbiór tras i upgrade/stream; IP loopback i podstawiony Host nie omijają autoryzacji
+- [ ] #7 Sesja/cookie jednego projektu nie uprawnia do sterowania innym projektem
 <!-- AC:END -->
 
 ## Definition of Done

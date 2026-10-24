@@ -4,7 +4,7 @@ title: '[RAC-25] Powiadomienia Telegram o pytaniach i wynikach'
 status: To Do
 assignee: []
 created_date: '2026-10-24T08:06:00Z'
-updated_date: '2026-10-24T08:06:00Z'
+updated_date: '2026-10-24T10:22:00Z'
 labels:
   - rac
   - m4-advanced
@@ -14,6 +14,8 @@ dependencies:
   - BACK-802
   - BACK-807
   - BACK-810
+documentation:
+  - docs/rac/decisions/0001-rac-architecture.md
 priority: low
 ordinal: 424000
 ---
@@ -22,6 +24,9 @@ ordinal: 424000
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
 Dodaj opcjonalny notifier Telegram ze zdarzeniami waiting_for_input, approval, completed, failed, offline. Powiadomienie zawiera tytuł taska, status i deep link do dashboardu; żadnych sekretów, tokenów, pełnych promptów lub komend. Token bota przechowuj poza repo, obsłuż throttling i brak dostępu do Telegrama.
+
+Ustalenia po review ADR-0001 (2026-10-24; zaakceptowane przez użytkownika):
+Powiadomienie niesie minimalne metadane i link; odpowiedź na powiadomienie nie rozstrzyga approval/plan review bez równoważnego uwierzytelnienia i korelacji do właściwego requestu.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
@@ -31,6 +36,7 @@ Dodaj opcjonalny notifier Telegram ze zdarzeniami waiting_for_input, approval, c
 - [ ] #3 Link prowadzi do właściwego runu po zalogowaniu
 - [ ] #4 Wyłączenie integracji nie blokuje agenta
 - [ ] #5 Błędy API Telegram są logowane i retryowane z limitem
+- [ ] #6 Odpowiedź na powiadomienie nie stanowi nieautoryzowanego kanału zatwierdzania
 <!-- AC:END -->
 
 ## Definition of Done

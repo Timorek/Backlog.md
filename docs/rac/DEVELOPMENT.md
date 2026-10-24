@@ -92,4 +92,8 @@ Checklist:
 5. Update a task through CLI and confirm the open dashboard refreshes. Verify frontend source refresh and backend restart in the development command.
 6. Check desktop and a narrow viewport, recording failures in RAC-01. Review pending task criteria before marking it Done.
 
-Do not expose this local dashboard publicly yet. RAC-18/19 must deliver verified authorization and network protection first; see `ARCHITECTURE.md`.
+Do not expose this local dashboard publicly yet. RAC-18/19 must deliver verified authorization and network protection first; see ADR-0001 D7 (`decisions/0001-rac-architecture.md`).
+
+## Codex protocol spike (RAC-03)
+
+The research-only probe and its limitations are documented in [RAC-03 spike](spikes/RAC-03-CODEX-APP-SERVER.md). Use `bun scripts/rac/codex-spike.ts --preflight`, `--live` or `--sandbox` from this checkout. Tests: `bun test --timeout=10000 scripts/rac/codex-spike.test.ts`. Live probes use synthetic inputs in a temporary workspace and require the user's existing Codex account; fixture tests do not validate model behavior. Agent-session EPERM prevents the real handshake and native sandbox from starting here. A separate run in the user's Terminal verified gpt-6.1-sol execution, fallback, approval denial, interrupt and EOF. The native sandbox read a synthetic file outside the workspace and denied loopback; credential isolation remains a runtime delivery gate. See the spike report for unresolved cases.

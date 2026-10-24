@@ -1,0 +1,38 @@
+{
+	"codexVersion": "0.162.1",
+	"recordedAt": "2026-10-24T10:36:45.001Z",
+	"report": {
+		"kind": "real-app-server-probe",
+		"liveRequested": true,
+		"platform": "darwin",
+		"initialize": false,
+		"modelExecution": "not_attempted",
+		"effectivePolicyVerified": false,
+		"structuredQuestion": "not_tested",
+		"approval": "not_tested",
+		"interrupt": "not_tested",
+		"fallback": "not_tested",
+		"resume": "not_tested",
+		"sandboxIsolation": "not_tested",
+		"failure": "App Server closed (code=1, signal=null)",
+		"shutdown": {
+			"exitedOnEof": false,
+			"forced": false
+		},
+		"diagnostics": {
+			"exitCode": 1,
+			"permissionDenied": true,
+			"stateInitializationFailed": false,
+			"authenticationFailed": false
+		},
+		"serverRequestMethods": []
+	},
+	"trace": [
+		{
+			"direction": "client",
+			"id": 1,
+			"method": "initialize",
+			"paramKeys": ["clientInfo", "capabilities"]
+		}
+	]
+}

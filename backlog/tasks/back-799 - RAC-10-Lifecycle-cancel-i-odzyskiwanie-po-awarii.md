@@ -4,7 +4,7 @@ title: '[RAC-10] Lifecycle: cancel i odzyskiwanie po awarii'
 status: To Do
 assignee: []
 created_date: '2026-10-24T08:05:00Z'
-updated_date: '2026-10-24T08:06:00Z'
+updated_date: '2026-10-24T10:22:00Z'
 labels:
   - rac
   - m1-local-mvp
@@ -14,6 +14,8 @@ dependencies:
   - BACK-796
   - BACK-797
   - BACK-798
+documentation:
+  - docs/rac/decisions/0001-rac-architecture.md
 priority: high
 ordinal: 409000
 ---
@@ -22,6 +24,9 @@ ordinal: 409000
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
 Dodaj POST cancel dla aktywnego runu z użyciem turn/interrupt, potwierdź zatrzymanie po zdarzeniu z serwera. Przy ponownym uruchomieniu backendu odczytaj dane runów; odróżnij możliwość thread/resume od utraconej aktywnej tury. Nie pokazuj niezweryfikowanego stanu running. Domyślne recovered run=unknown/requires_review.
+
+Ustalenia po review ADR-0001 (2026-10-24; zaakceptowane przez użytkownika):
+Q1=A: dostarcz CLI cancel/resume/resolve razem z odpowiadającym API. unknown nie jest terminalny i zajmuje slot do jawnego resolve człowieka do abandoned; brak automatycznego wznowienia i brak zabijania obcego PID. Resume tworzy nowy run w tej samej Session. Wygaśnięcie blokującej interakcji przerywa turę, a przerwanie wymaga potwierdzenia; brak dowodu oznacza unknown. Restart backendu/launchd/bun --watch stosuje ten sam recovery.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
@@ -31,6 +36,8 @@ Dodaj POST cancel dla aktywnego runu z użyciem turn/interrupt, potwierdź zatrz
 - [ ] #3 Crash procesu przełącza run w unknown lub failed z opisem
 - [ ] #4 Restart backendu nie tworzy podwójnego uruchomienia
 - [ ] #5 Testy obejmują brak odpowiedzi app-server
+- [ ] #6 CLI i API obsługują cancel/resume/resolve zgodnie ze wspólną idempotencją i autoryzacją
+- [ ] #7 unknown zwalnia slot wyłącznie po świadomym rozstrzygnięciu przez człowieka; stale approvals nie są odtwarzane
 <!-- AC:END -->
 
 ## Definition of Done

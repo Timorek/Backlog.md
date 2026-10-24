@@ -1,0 +1,12 @@
+{
+	"evidenceKind": "user_terminal_native_sandbox",
+	"report": {
+		"kind": "real-codex-sandbox-probe",
+		"listenerAvailable": true,
+		"result": {
+			"syntheticOutsideRead": true,
+			"loopbackErrno": 1
+		},
+		"commandCompleted": true
+	}
+}

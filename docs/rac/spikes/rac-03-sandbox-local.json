@@ -1,0 +1,8 @@
+{
+	"kind": "real-codex-sandbox-probe",
+	"listenerAvailable": false,
+	"listenerError": "EPERM",
+	"commandCompleted": false,
+	"exitCode": 71,
+	"sandboxApplyDenied": true
+}

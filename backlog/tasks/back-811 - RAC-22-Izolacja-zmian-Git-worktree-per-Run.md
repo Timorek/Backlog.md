@@ -4,7 +4,7 @@ title: '[RAC-22] Izolacja zmian Git worktree per Run'
 status: To Do
 assignee: []
 created_date: '2026-10-24T08:06:00Z'
-updated_date: '2026-10-24T08:06:00Z'
+updated_date: '2026-10-24T10:22:00Z'
 labels:
   - rac
   - m4-advanced
@@ -14,6 +14,8 @@ dependencies:
   - BACK-797
   - BACK-799
   - BACK-810
+documentation:
+  - docs/rac/decisions/0001-rac-architecture.md
 priority: medium
 ordinal: 421000
 ---
@@ -22,6 +24,9 @@ ordinal: 421000
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
 Dla każdego runu twórz odizolowany git worktree i branch rac/<runId> zamiast współdzielenia jednego katalogu roboczego. Waliduj czysty stan wyjściowy, referencję do bazy oraz uprawnienia. Sprzątaj worktree po świadomym zatwierdzeniu albo przez bezpieczny mechanizm cleanup. Ogranicz rozmiary i liczbę worktree.
+
+Ustalenia po review ADR-0001 (2026-10-24; zaakceptowane przez użytkownika):
+Agent w worktree zmienia branchową kopię backlog/tasks, a dashboard główny checkout. Określ jawny przepływ powrotu tych zmian i konfliktów zgodny z cross-branch semantyką Backloga; nie twórz drugiego źródła prawdy o taskach.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
@@ -31,6 +36,7 @@ Dla każdego runu twórz odizolowany git worktree i branch rac/<runId> zamiast w
 - [ ] #3 Cleanup nie usuwa niezacommitowanych zmian bez potwierdzenia
 - [ ] #4 Błędne repo/branch nie uruchamia agenta
 - [ ] #5 Testy obejmują konflikt branch i porzucony worktree
+- [ ] #6 Udokumentowano i przetestowano powrót zmian tasków z worktree bez zgadywania tożsamości i nadpisywania głównego checkoutu
 <!-- AC:END -->
 
 ## Definition of Done

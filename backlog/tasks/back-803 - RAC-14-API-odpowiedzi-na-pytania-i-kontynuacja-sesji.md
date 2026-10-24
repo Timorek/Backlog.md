@@ -4,7 +4,7 @@ title: '[RAC-14] API: odpowiedzi na pytania i kontynuacja sesji'
 status: To Do
 assignee: []
 created_date: '2026-10-24T08:05:00Z'
-updated_date: '2026-10-24T08:06:00Z'
+updated_date: '2026-10-24T10:22:00Z'
 labels:
   - rac
   - m2-dashboard
@@ -13,6 +13,8 @@ labels:
   - mvp
 dependencies:
   - BACK-802
+documentation:
+  - docs/rac/decisions/0001-rac-architecture.md
 priority: high
 ordinal: 413000
 ---
@@ -21,6 +23,9 @@ ordinal: 413000
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
 Dodaj POST /api/rac/interactions/{id}/answer. Zweryfikuj uprawnienia użytkownika i przynależność do runu; odpowiedz na trwający request właściwą metodą JSON-RPC albo uruchom następną turę w tym samym threadId dla fallbacku. Wprowadź idempotencję oraz obsługę timeoutu i request resolved.
+
+Ustalenia po review ADR-0001 (2026-10-24; zaakceptowane przez użytkownika):
+Q1=A: CLI answer razem z API, pod warunkiem potwierdzonej w RAC-03 izolacji poświadczeń od agenta. Q7a/b: jeden Idempotency-Key i wspólna tabela; bez responseId i expectedOwnerGeneration w body, serwer sam sprawdza zapisaną generację. Stare interakcje są stale i nie trafiają do providera. Dopuszczenie wykonania po planie wymaga prawidłowej odpowiedzi na konkretną interakcję, nie dowolnego tekstu czatu.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
@@ -30,6 +35,8 @@ Dodaj POST /api/rac/interactions/{id}/answer. Zweryfikuj uprawnienia użytkownik
 - [ ] #3 Dwie równoczesne odpowiedzi nie rozwiązują requestu dwukrotnie
 - [ ] #4 Odpowiedź na wygasłe pytanie zwraca czytelny konflikt
 - [ ] #5 Pytania i odpowiedzi zapisują historię z datą
+- [ ] #6 API i CLI answer współdzielą deduplikację; request poprzedniej generacji jest odrzucany bez wysłania do providera
+- [ ] #7 Agent nie uzyskuje poświadczeń do odpowiedzi/zgód; przy braku udowodnionej izolacji kanał CLI nie jest udostępniony
 <!-- AC:END -->
 
 ## Definition of Done

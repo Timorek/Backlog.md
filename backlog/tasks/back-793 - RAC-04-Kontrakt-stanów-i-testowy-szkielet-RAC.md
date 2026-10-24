@@ -4,7 +4,7 @@ title: '[RAC-04] Kontrakt stanów i testowy szkielet RAC'
 status: To Do
 assignee: []
 created_date: '2026-10-24T08:05:00Z'
-updated_date: '2026-10-24T08:06:00Z'
+updated_date: '2026-10-24T10:22:00Z'
 labels:
   - rac
   - m0-discovery
@@ -14,6 +14,8 @@ labels:
 dependencies:
   - BACK-791
   - BACK-792
+documentation:
+  - docs/rac/decisions/0001-rac-architecture.md
 priority: high
 ordinal: 403000
 ---
@@ -21,7 +23,10 @@ ordinal: 403000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-Zdefiniuj stany queued/running/waiting_for_input/waiting_for_approval/completed/failed/cancelled/unknown. Oddziel status taska Backlog.md od statusu konkretnego uruchomienia: jeden task może mieć wiele runów. Postaw testy jednostkowe kontraktów i atrapę adaptera umożliwiającą testowanie UI bez prawdziwego Codexa.
+Zdefiniuj stany starting/running/interrupting/interrupted/completed/failed/unknown/abandoned; oczekiwanie wyliczane z interakcji. Oddziel status taska Backlog.md od statusu konkretnego uruchomienia: jeden task może mieć wiele runów. Postaw testy jednostkowe kontraktów i atrapę adaptera umożliwiającą testowanie UI bez prawdziwego Codexa.
+
+Ustalenia po review ADR-0001 (2026-10-24; zaakceptowane przez użytkownika):
+Q5=A i Q7f: przechowuj lifecycle starting/running/interrupting/interrupted/completed/failed/unknown/abandoned. Oczekiwanie na input/approval wyliczaj ze zbioru otwartych interakcji blokujących; pytania nieblokujące nie zatrzymują runa. unknown zajmuje slot, dopóki człowiek nie rozstrzygnie go do abandoned. Brak queued i kolejki w MVP; drugi start daje 409 run_active. Uzgodnij stany z wynikami RAC-03.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
@@ -30,6 +35,8 @@ Zdefiniuj stany queued/running/waiting_for_input/waiting_for_approval/completed/
 - [ ] #2 Testy sprawdzają idempotentne zmiany statusu i mapowanie task -> run
 - [ ] #3 Mock agent umie emitować tekst pytanie approval sukces i błąd
 - [ ] #4 Restart aplikacji nie jest modelowany jako sukces uruchomienia
+- [ ] #5 Brak queued w MVP; zajęty slot zwraca 409 bez utworzenia następnego runa
+- [ ] #6 Testy obejmują waiting wyliczane z wielu interakcji, pytanie nieblokujące, unknown i jawne resolve do abandoned
 <!-- AC:END -->
 
 ## Definition of Done
