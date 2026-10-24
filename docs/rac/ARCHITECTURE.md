@@ -59,3 +59,12 @@ The first internal RAC code is documented in [RUN-STATE.md](RUN-STATE.md): immut
 RPC adapter, policy checks and tested macOS process-group shutdown. This is an
 internal building block, with no execution endpoint or UI. The real-provider
 smoke test remains a separate gate from mock protocol and synthetic process tests.
+
+## RAC-07 persistence boundary
+
+[PERSISTENCE.md](PERSISTENCE.md) documents the private Bun SQLite store, actual
+EXCLUSIVE ownership, transactional migrations/idempotency and whole-run retention.
+Session, run, interaction and event records survive restart; uncertain runs retain
+the active slot. The future manager must hold the store for its lifetime, stop on
+fencing and authenticate human resolution. This module adds no execution route,
+discovery descriptor or dashboard feature.

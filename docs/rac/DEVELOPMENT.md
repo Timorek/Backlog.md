@@ -98,6 +98,15 @@ agent session cannot substitute for this system-dialog check in a normal Termina
 
 ### Checks
 
+RAC-07 storage checks use temporary external databases and need no Codex account:
+
+```bash
+bun test --timeout=10000 src/test/rac-store.test.ts src/test/rac-store-process.test.ts
+```
+
+See [PERSISTENCE.md](PERSISTENCE.md) for ownership, recovery, retention and platform
+limits. The store remains an internal module until the manager/API tasks integrate it.
+
 The RAC-06 adapter has a standalone verification script, described in
 [CODEX-ADAPTER.md](CODEX-ADAPTER.md). From this checkout:
 
