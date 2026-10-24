@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, test } from "bun:test";
 import { mkdtemp, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { CodexAdapter } from "../rac/codex-adapter.ts";
+import { CodexAdapter, inspectCodexPolicy } from "../rac/codex-adapter.ts";
 import { CodexError, type CodexProtocolEvent, type RpcRecord, rpcRecord } from "../rac/codex-rpc.ts";
 import { MockCodexTransport } from "../rac/testing/mock-codex-transport.ts";
 
@@ -141,6 +141,26 @@ test("policy diagnostics identify failing checks without leaking paths or raw co
 	expect(Object.values(checks ?? {}).every((value) => typeof value === "boolean")).toBe(true);
 	expect(JSON.stringify(checks)).not.toContain("synthetic-private-path");
 	expect(JSON.stringify(checks)).not.toContain(workspace);
+});
+
+test("policy observations expose only recognized sandbox/profile names and primitive limits", () => {
+	const secret = "SYNTHETIC_SECRET_NEVER_PRINT";
+	const policy = inspectCodexPolicy(
+		{
+			cwd: secret,
+			activePermissionProfile: { id: secret },
+			sandbox: { type: secret, networkAccess: secret, writableRoots: [secret] },
+		},
+		workspace,
+	);
+	expect(policy.observed).toMatchObject({
+		sandboxType: "unrecognized",
+		permissionProfile: "custom",
+		networkAccess: null,
+		writableRootCount: 1,
+	});
+	expect(JSON.stringify(policy)).not.toContain(secret);
+	expect(Object.values(policy.checks).every(Boolean)).toBe(false);
 });
 
 test("requires a loaded thread, steers the exact active turn, and starts a new turn only after completion", async () => {

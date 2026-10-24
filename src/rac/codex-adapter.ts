@@ -20,6 +20,52 @@ type AdapterOptions = {
 };
 type ActiveTurn = { id?: string };
 
+export function inspectCodexPolicy(response: RpcRecord, workspace: string) {
+	const sandbox = rpcRecord(response.sandbox);
+	const knownTypes = [
+		"workspaceWrite",
+		"workspace-write",
+		"readOnly",
+		"read-only",
+		"dangerFullAccess",
+		"danger-full-access",
+		"externalSandbox",
+		"external-sandbox",
+	];
+	const profile = rpcRecord(response.activePermissionProfile).id;
+	return {
+		checks: {
+			cwdMatches: response.cwd === workspace,
+			approvalPolicyOnRequest: response.approvalPolicy === "on-request",
+			reviewerIsUser: response.approvalsReviewer === "user",
+			workspaceWriteSandbox: sandbox.type === "workspaceWrite",
+			networkDisabled: sandbox.networkAccess === false,
+			slashTmpExcluded: sandbox.excludeSlashTmp === true,
+			tmpdirExcluded: sandbox.excludeTmpdirEnvVar === true,
+			runtimeRootsMatch:
+				response.runtimeWorkspaceRoots === undefined ||
+				(Array.isArray(response.runtimeWorkspaceRoots) &&
+					response.runtimeWorkspaceRoots.every((root) => root === workspace)),
+			writableRootsMatch:
+				Array.isArray(sandbox.writableRoots) && sandbox.writableRoots.every((root) => root === workspace),
+		},
+		observed: {
+			sandboxType:
+				typeof sandbox.type === "string" && knownTypes.includes(sandbox.type) ? sandbox.type : "unrecognized",
+			networkAccess: typeof sandbox.networkAccess === "boolean" ? sandbox.networkAccess : null,
+			excludeSlashTmp: typeof sandbox.excludeSlashTmp === "boolean" ? sandbox.excludeSlashTmp : null,
+			excludeTmpdirEnvVar: typeof sandbox.excludeTmpdirEnvVar === "boolean" ? sandbox.excludeTmpdirEnvVar : null,
+			writableRootCount: Array.isArray(sandbox.writableRoots) ? sandbox.writableRoots.length : null,
+			permissionProfile:
+				typeof profile === "string"
+					? [":workspace", ":read-only", ":full-access"].includes(profile)
+						? profile
+						: "custom"
+					: "absent",
+		},
+	};
+}
+
 export class CodexAdapter {
 	private rpc?: CodexRpc;
 	private readonly threads = new Set<string>();
@@ -126,25 +172,11 @@ export class CodexAdapter {
 		};
 	}
 	private verifyPolicy(response: RpcRecord): void {
-		const sandbox = rpcRecord(response.sandbox);
-		const checks = {
-			cwdMatches: response.cwd === this.workspace,
-			approvalPolicyOnRequest: response.approvalPolicy === "on-request",
-			reviewerIsUser: response.approvalsReviewer === "user",
-			workspaceWriteSandbox: sandbox.type === "workspaceWrite",
-			networkDisabled: sandbox.networkAccess === false,
-			slashTmpExcluded: sandbox.excludeSlashTmp === true,
-			tmpdirExcluded: sandbox.excludeTmpdirEnvVar === true,
-			runtimeRootsMatch:
-				response.runtimeWorkspaceRoots === undefined ||
-				(Array.isArray(response.runtimeWorkspaceRoots) &&
-					response.runtimeWorkspaceRoots.every((root) => root === this.workspace)),
-			writableRootsMatch:
-				Array.isArray(sandbox.writableRoots) && sandbox.writableRoots.every((root) => root === this.workspace),
-		};
+		const { checks, observed } = inspectCodexPolicy(response, this.workspace);
 		if (!Object.values(checks).every(Boolean)) {
 			const error = new CodexError("policy_mismatch", "Effective Codex policy differs from the restricted RAC policy");
 			error.policyChecks = checks;
+			error.policyObserved = observed;
 			throw error;
 		}
 	}

@@ -79,6 +79,7 @@ export async function runAdapterSmoke(
 	} catch (error) {
 		result.error = error instanceof CodexError ? error.code : "probe_failed";
 		if (error instanceof CodexError && error.policyChecks) result.policyChecks = error.policyChecks;
+		if (error instanceof CodexError && error.policyObserved) result.policyObserved = error.policyObserved;
 		if (error instanceof CodexError && error.diagnostics) result.diagnostics = error.diagnostics;
 	} finally {
 		if (adapter) {

@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-10-24T08:05:00Z'
-updated_date: '2026-10-24T18:44:00Z'
+updated_date: '2026-10-24T18:53:00Z'
 labels:
   - rac
   - m1-local-mvp
@@ -21,6 +21,7 @@ documentation:
   - docs/rac/decisions/0001-rac-architecture.md
   - docs/rac/CODEX-ADAPTER.md
   - docs/rac/spikes/rac-06-terminal.json
+  - docs/rac/spikes/rac-06-terminal-policy-checks.json
 priority: high
 ordinal: 405000
 ---
@@ -66,6 +67,8 @@ Runtime to Bun/TypeScript w istniejącym Backlog.md. Używaj jawnego --listen st
 8. Run targeted tests, existing RAC regressions, types, Biome and build. Document protocol/schema/OS and cleanup limits in docs/rac; update only proven AC, prepare scoped local commit, no push or next RAC task.
 
 Real Terminal smoke reached initialize but failed strict thread policy verification (policy_mismatch), with no model turn and successful process-group cleanup. Add sanitized per-field policy check diagnostics to the adapter error and smoke JSON so the actual mismatch can be identified; retain every restriction. Record this failed real-provider attempt separately and keep AC1/6 open until the mismatch is understood and a real probe succeeds.
+
+Diagnose the remaining real-host sandbox mismatch without changing production policy: share one strict policy inspector between adapter and diagnostics; expose only recognized sandbox kinds/profile categories and primitive limits; add an operator-only comparison of current versus omitted metadata, persistent/ephemeral threads and restricted thread config overrides. Each variant uses a separate owned process, has no turn/model/tool call, retains identical policy checks, and stops after startup/cleanup failure. Use the normal-Terminal comparison result to choose a demonstrated compatible request shape before editing production policy construction.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -78,4 +81,8 @@ Final checks: 190 tests / 603 assertions across 12 files PASS, including RAC-03 
 The task already had In Progress/@codex metadata and a changed ordinal at start. Preserve the existing ordinal change outside the scoped code commit. Groma is unavailable (command not found); no Groma-owned files touched. No push or next RAC task.
 
 User ran the real adapter in normal macOS Terminal: initialize=true; threadPolicy=false; error=policy_mismatch; permissionDenied=false; authenticationFailed=false; shutdown exitedOnEof=true, forced=true, groupStopped=true. This now proves AC1 real App Server startup and shutdown, so AC1 is checked. It does not prove a compatible effective policy or successful model execution; task remains In Progress and AC6 is still open. Saved the exact sanitized outcome in docs/rac/spikes/rac-06-terminal.json. Improved policy_mismatch errors and the smoke JSON with named boolean policyChecks, without raw paths/configuration/tokens; every previous policy restriction is retained. Added a diagnostic/redaction regression test. Types 574 files, Biome 505 files and standalone adapter bundle pass; targeted adapter/RPC/native-process tests pass. Next user probe should omit --live: thread policy can be diagnosed without starting a model turn.
+
+Second Terminal result: initialize=true, threadPolicy=false, policy_mismatch; cwd/approvalPolicy/reviewer/network/runtime-roots checks true, sandbox type/tmp exclusions/writable-roots checks false. Exact sandbox discriminant and shape are not yet captured; do not infer or weaken policy from these booleans. All process group members stopped (EOF parent exit, forced cleanup true). Investigate representation versus effective policy; keep task In Progress.
+
+Added inspectCodexPolicy with unchanged strict checks and sanitized policyObserved. Unknown sandbox/profile/config strings are redacted to categories; no paths or raw config are printed. Added scripts/rac/codex-policy-diagnostic.ts: seven bounded thread-start-only variants (current, omit runtime roots, omit environment metadata, legacy persistent/ephemeral, nested/dotted restricted per-thread config). No turn/model/tool operation or approval response is sent. The production adapter has no automatic fallback or retry and its required policy is unchanged. Unit tests prove comparison differences, no execution RPC, cleanup, startup fail-fast and redaction. Verification: 44 targeted tests / 145 assertions across 4 files PASS; types 576 files PASS; Biome 508 files PASS; adapter plus diagnostic Bun bundle PASS; diff check PASS. Second user result saved unchanged in rac-06-terminal-policy-checks.json. Actual mismatch cause remains unconfirmed until the operator comparison runs outside this session; task stays In Progress, no further AC checked.
 <!-- SECTION:NOTES:END -->

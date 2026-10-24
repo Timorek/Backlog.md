@@ -149,6 +149,28 @@ no raw configuration, paths or secrets. Any false check still blocks execution.
 When diagnosing this failure, run the default probe first; `--live` is not
 needed to inspect thread policy.
 
+The [second Terminal result](spikes/rac-06-terminal-policy-checks.json) matched
+cwd, approval policy, reviewer and network constraints but differed on sandbox
+type, temporary exclusions and writable roots. This does not establish whether
+the runtime returns another sandbox kind or a different representation. Error
+reports now include `policyObserved`: only recognized sandbox kinds, built-in
+profile categories, boolean flags and a writable-root count. Paths, custom
+profile names and arbitrary configuration values are not printed.
+
+To compare request variants without starting any model or tool:
+
+```bash
+../.rac-tools/bun-darwin-aarch64/bun scripts/rac/codex-policy-diagnostic.ts
+```
+
+This diagnostic uses a temporary workspace, a separate owned process for each
+variant and the same strict requested sandbox/approval policy. It compares the
+current request, omitted runtime-root/environment metadata, persistent versus
+ephemeral threads and explicit restricted thread config overrides. The checks
+remain identical for every result. It stops after startup or cleanup failure;
+no variant launches a turn or receives an approval grant. These are operator
+diagnostics only, not automatic fallback/retry behavior in the production adapter.
+
 Run in a normal macOS Terminal from this checkout:
 
 ```bash
