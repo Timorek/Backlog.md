@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-10-24T08:05:00Z'
-updated_date: '2026-10-24T18:59:00Z'
+updated_date: '2026-10-24T19:20:00Z'
 labels:
   - rac
   - m1-local-mvp
@@ -23,6 +23,7 @@ documentation:
   - docs/rac/spikes/rac-06-terminal.json
   - docs/rac/spikes/rac-06-terminal-policy-checks.json
   - docs/rac/spikes/rac-06-terminal-policy-matrix.json
+  - docs/rac/spikes/rac-06-terminal-live-policy-fixed.json
 priority: high
 ordinal: 405000
 ---
@@ -72,6 +73,8 @@ Real Terminal smoke reached initialize but failed strict thread policy verificat
 Diagnose the remaining real-host sandbox mismatch without changing production policy: share one strict policy inspector between adapter and diagnostics; expose only recognized sandbox kinds/profile categories and primitive limits; add an operator-only comparison of current versus omitted metadata, persistent/ephemeral threads and restricted thread config overrides. Each variant uses a separate owned process, has no turn/model/tool call, retains identical policy checks, and stops after startup/cleanup failure. Use the normal-Terminal comparison result to choose a demonstrated compatible request shape before editing production policy construction.
 
 User Terminal matrix identifies environments: [] as the differentiator: current/without-runtime-roots/config-overrides return readOnly; without-environments and legacy persistent/ephemeral return workspaceWrite with every required check true. Remove the optional environments field from thread/start and turn/start; retain pinned roots, explicit turn policy and every strict response check. Update fixtures to reproduce the observed distinction, save exact matrix evidence, test and commit. Require a final real --live run before completing RAC-06.
+
+Latest real corrected-adapter smoke: initialize=true, threadPolicy=true, modelTurn=completed, then rpc_error; EOF/group shutdown succeeded without forcing. Identify the failing RPC instead of guessing. Correlate safe method/code/reason with each pending RPC, add explicit smoke stages and turn identity agreement, and wait for matching turn/started before interrupting. Use fresh per-message UUIDs for each independent smoke run. Unit-test late turn-start notification and both second-start/interrupt error paths; retain all policies and no automatic retries. Keep the task open until real interruption is verified.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -90,4 +93,6 @@ Second Terminal result: initialize=true, threadPolicy=false, policy_mismatch; cw
 Added inspectCodexPolicy with unchanged strict checks and sanitized policyObserved. Unknown sandbox/profile/config strings are redacted to categories; no paths or raw config are printed. Added scripts/rac/codex-policy-diagnostic.ts: seven bounded thread-start-only variants (current, omit runtime roots, omit environment metadata, legacy persistent/ephemeral, nested/dotted restricted per-thread config). No turn/model/tool operation or approval response is sent. The production adapter has no automatic fallback or retry and its required policy is unchanged. Unit tests prove comparison differences, no execution RPC, cleanup, startup fail-fast and redaction. Verification: 44 targeted tests / 145 assertions across 4 files PASS; types 576 files PASS; Biome 508 files PASS; adapter plus diagnostic Bun bundle PASS; diff check PASS. Second user result saved unchanged in rac-06-terminal-policy-checks.json. Actual mismatch cause remains unconfirmed until the operator comparison runs outside this session; task stays In Progress, no further AC checked.
 
 User supplied the complete real-host seven-variant comparison. With environments: [] the server returned readOnly in current/without-runtime-roots/nested-config/dotted-config cases. Without environments, both pinned-runtime-roots and legacy persistent/ephemeral variants returned workspaceWrite, networkAccess=false, both tmp exclusions=true, writableRootCount=0 (implicit cwd), all nine checks=true, and groupStopped=true. Saved the exact sanitized matrix in rac-06-terminal-policy-matrix.json. The differentiator on this Codex 0.162.1 host is the optional empty environments field. Removed it from production thread/start and turn/start, retaining pinned cwd/runtime roots, explicit turn sandbox, on-request/user approvals and every strict effective policy check. Updated adapter fixture and diagnostic fixture to reproduce the real behavior; injected options cannot reintroduce the field. Verification: 44 tests / 149 assertions across 4 files PASS; types 576 files PASS; Biome 509 files PASS; adapter bundle PASS; diff check PASS. No host config edits, broader profile, policy downgrade or automatic fallback. Task remains In Progress pending one final live smoke of the corrected production adapter (completed model turn, interrupt, shutdown); no new AC checked based on mocks alone.
+
+The corrected production adapter now passed real initialize, strict thread policy and a completed model turn on the user host, then reported a generic rpc_error; EOF shutdown/group termination succeeded with forced=false. Saved that exact result in rac-06-terminal-live-policy-fixed.json. The failing method was not captured, so do not assume the cause or claim interruption passed. Added per-pending-request safe rpcFailure metadata (allowlisted method, integer code, classified reason; no provider text/data), smoke failedStage and response-versus-turn/started identity booleans. The probe now waits for matching turn/started before interruption, with a deadline and no retries, and generates fresh logical message UUIDs per invocation. Added end-to-end mock smoke tests for delayed startup, second-start failure and interrupt failure plus RPC metadata/redaction correlation. Fixture cleanup validates owned temporary paths. Verification: 48 tests / 171 assertions across 5 files PASS; types 577 files PASS; Biome 511 files PASS; adapter/smoke Bun bundles PASS; diff check PASS. Native interruption is still unverified; keep task In Progress and AC6 open. Next normal-Terminal live probe will either verify interruption or identify the exact failing stage/method/code/reason without raw sensitive output.
 <!-- SECTION:NOTES:END -->

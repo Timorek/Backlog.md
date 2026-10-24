@@ -1,8 +1,39 @@
 import { expect, test } from "bun:test";
-import { type CodexProtocolEvent, type CodexRequestMethod, CodexRpc } from "../rac/codex-rpc.ts";
+import { CodexError, type CodexProtocolEvent, type CodexRequestMethod, CodexRpc } from "../rac/codex-rpc.ts";
 import { MockCodexTransport } from "../rac/testing/mock-codex-transport.ts";
 
 const tick = () => new Promise<void>((resolve) => setTimeout(resolve, 5));
+
+test("RPC failures identify the correlated method and code without exposing provider error text or data", async () => {
+	const transport = new MockCodexTransport();
+	const rpc = new CodexRpc(transport);
+	try {
+		const first = rpc.request("turn/start", {});
+		const second = rpc.request("turn/interrupt", {});
+		transport.emit({
+			id: 2,
+			error: { code: -32001, message: "SYNTHETIC_PRIVATE_ERROR", data: { token: "SYNTHETIC_PRIVATE_DATA" } },
+		});
+		transport.emit({ id: 1, result: {} });
+		let failure: unknown;
+		try {
+			await second;
+		} catch (error) {
+			failure = error;
+		}
+		expect(failure).toBeInstanceOf(CodexError);
+		expect((failure as CodexError).rpcFailure).toEqual({
+			method: "turn/interrupt",
+			code: -32001,
+			reason: "unclassified",
+		});
+		expect(JSON.stringify(failure)).not.toContain("SYNTHETIC_PRIVATE");
+		expect((failure as Error).message).not.toContain("SYNTHETIC_PRIVATE");
+		expect(await first).toEqual({});
+	} finally {
+		await rpc.close();
+	}
+});
 
 test("RPC correlates out-of-order replies and preserves numeric versus string IDs", async () => {
 	const transport = new MockCodexTransport();

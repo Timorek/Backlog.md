@@ -46,6 +46,7 @@ export class CodexError extends Error {
 	diagnostics?: { permissionDenied: boolean; authenticationFailed: boolean };
 	policyChecks?: Readonly<Record<string, boolean>>;
 	policyObserved?: Readonly<Record<string, string | number | boolean | null>>;
+	rpcFailure?: { readonly method: CodexRequestMethod; readonly code: number | null; readonly reason: string };
 	constructor(
 		readonly code: string,
 		message: string,
@@ -64,12 +65,35 @@ function isId(value: unknown): value is RpcId {
 	);
 }
 
+function rpcFailureReason(message: unknown, code: number | null): string {
+	if (typeof message === "string") {
+		const reasons: [RegExp, string][] = [
+			[/no (?:active|running) turn|turn.*(?:not found|not active|does not exist|not running)/i, "no_active_turn"],
+			[/thread.*(?:not found|does not exist|not loaded|not initialized)/i, "thread_not_loaded"],
+			[/expectedTurnId|turn.*(?:mismatch|does not match)/i, "turn_id_mismatch"],
+			[
+				/(?:already|currently).*turn|turn.*(?:already|currently).*(?:running|active|progress)|thread.*busy/i,
+				"turn_busy",
+			],
+			[/client.*message.*(?:id|identifier)|(?:duplicate|invalid).*message.*id/i, "message_id_invalid"],
+			[/model.*(?:not found|not available|not supported|access)|unsupported.*model/i, "model_unavailable"],
+			[/rate.limit|too many requests|quota/i, "rate_limited"],
+			[/interrupt.*(?:not supported|unsupported)|unsupported.*interrupt/i, "interrupt_unsupported"],
+			[/sandbox|approval|permission/i, "policy_error"],
+		];
+		const match = reasons.find(([pattern]) => pattern.test(message));
+		if (match) return match[1];
+	}
+	return code === -32601 ? "method_not_found" : code === -32602 ? "invalid_params" : "unclassified";
+}
+
 export class CodexRpc {
 	private nextId = 1;
 	private failure?: CodexError;
 	private readonly pending = new Map<
 		RpcId,
 		{
+			method: CodexRequestMethod;
 			resolve: (value: unknown) => void;
 			reject: (error: Error) => void;
 			timer: ReturnType<typeof setTimeout>;
@@ -212,9 +236,14 @@ export class CodexRpc {
 		if (!request) return;
 		clearTimeout(request.timer);
 		this.pending.delete(message.id);
-		if ("error" in message)
-			request.reject(new CodexError("rpc_error", `Codex RPC error ${String(rpcRecord(message.error).code)}`));
-		else request.resolve(message.result);
+		if ("error" in message) {
+			const providerError = rpcRecord(message.error);
+			const code =
+				typeof providerError.code === "number" && Number.isSafeInteger(providerError.code) ? providerError.code : null;
+			const error = new CodexError("rpc_error", `Codex RPC ${request.method} failed (${code ?? "invalid_error"})`);
+			error.rpcFailure = { method: request.method, code, reason: rpcFailureReason(providerError.message, code) };
+			request.reject(error);
+		} else request.resolve(message.result);
 	}
 	private clearRequest(id: RpcId): void {
 		const entry = this.requests.get(id);
@@ -264,7 +293,7 @@ export class CodexRpc {
 				reject(new CodexError("rpc_timeout", `Codex RPC timeout: ${method}; outcome may be unknown`));
 				this.fail("request_timeout");
 			}, this.options.timeoutMs ?? 10_000);
-			this.pending.set(id, { resolve, reject, timer });
+			this.pending.set(id, { method, resolve, reject, timer });
 			void this.send({ id, method, params }).catch((error) => {
 				clearTimeout(timer);
 				this.pending.delete(id);

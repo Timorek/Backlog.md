@@ -1,12 +1,18 @@
+import { randomUUID } from "node:crypto";
 import { mkdir, mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { CodexAdapter } from "../../src/rac/codex-adapter.ts";
 import { resolveCodexBinary } from "../../src/rac/codex-process.ts";
-import { CodexError, rpcRecord } from "../../src/rac/codex-rpc.ts";
+import { CodexError, type CodexTransport, rpcRecord } from "../../src/rac/codex-rpc.ts";
 
 export async function runAdapterSmoke(
-	options: { live?: boolean; binaryPath?: string; model?: string } = {},
+	options: {
+		live?: boolean;
+		binaryPath?: string;
+		model?: string;
+		transportFactory?: () => Promise<CodexTransport>;
+	} = {},
 ): Promise<Record<string, unknown>> {
 	const directory = await mkdtemp(join(tmpdir(), "rac06-smoke-"));
 	const workspace = join(directory, "workspace");
@@ -19,9 +25,14 @@ export async function runAdapterSmoke(
 		liveRequested: options.live === true,
 	};
 	let adapter: CodexAdapter | undefined;
+	let stage = "initialize";
 	try {
-		const binary = await resolveCodexBinary(options.binaryPath);
-		adapter = await CodexAdapter.connect(workspace, { binaryPath: binary, dataRoot: join(directory, "rac-data") });
+		const binary = options.transportFactory ? undefined : await resolveCodexBinary(options.binaryPath);
+		adapter = await CodexAdapter.connect(workspace, {
+			binaryPath: binary,
+			dataRoot: join(directory, "rac-data"),
+			transportFactory: options.transportFactory,
+		});
 		result.initialize = true;
 		adapter.subscribe((event) => {
 			if (event.type !== "request") return;
@@ -36,6 +47,7 @@ export async function runAdapterSmoke(
 				void adapter?.respondToRequest(event.id, { action: "decline" }).catch(() => {});
 			}
 		});
+		stage = "thread_start";
 		const threadId = await adapter.startThread({
 			model: options.model,
 			instructions:
@@ -45,7 +57,13 @@ export async function runAdapterSmoke(
 		if (options.live) {
 			const turn = async (text: string, messageId: string, interrupt: boolean) => {
 				const events: { id: string; status: unknown }[] = [];
+				const started = new Set<string>();
+				let responseId: string | undefined;
 				const unsubscribe = adapter?.subscribe((event) => {
+					if (event.type === "notification" && event.method === "turn/started" && event.params.threadId === threadId) {
+						const id = rpcRecord(event.params.turn).id;
+						if (typeof id === "string") started.add(id);
+					}
 					if (
 						event.type === "notification" &&
 						event.method === "turn/completed" &&
@@ -56,8 +74,24 @@ export async function runAdapterSmoke(
 					}
 				});
 				try {
+					stage = interrupt ? "interrupt_turn_start" : "model_turn_start";
 					const id = await adapter?.startTurn(threadId, text, messageId);
-					if (interrupt && !events.some((event) => event.id === id)) await adapter?.interrupt(threadId);
+					responseId = id;
+					if (interrupt) {
+						stage = "wait_turn_started";
+						const startDeadline = Date.now() + 10_000;
+						while (!started.has(id as string) && !events.some((event) => event.id === id)) {
+							if (Date.now() >= startDeadline)
+								throw new CodexError("turn_start_timeout", "No matching turn/started before interruption");
+							await new Promise((resolve) => setTimeout(resolve, 20));
+						}
+						if (!events.some((event) => event.id === id)) {
+							stage = "interrupt_request";
+							await adapter?.interrupt(threadId);
+							result.interruptAcknowledged = true;
+						}
+					}
+					stage = interrupt ? "wait_interrupt_completion" : "wait_model_completion";
 					const deadline = Date.now() + 45_000;
 					while (Date.now() < deadline) {
 						const completed = events.find((event) => event.id === id);
@@ -66,18 +100,25 @@ export async function runAdapterSmoke(
 					}
 					throw new CodexError("turn_timeout", "Synthetic model turn did not complete");
 				} finally {
+					if (interrupt)
+						result.interruptTurnIdentity = {
+							startedNotificationSeen: started.size > 0,
+							responseMatchesStarted: responseId === undefined ? null : started.has(responseId),
+						};
 					unsubscribe?.();
 				}
 			};
-			result.modelTurn = await turn("Reply with RAC_ADAPTER_OK only.", "rac06-message-1", false);
+			result.modelTurn = await turn("Reply with RAC_ADAPTER_OK only.", randomUUID(), false);
 			result.interrupt = await turn(
 				"Write a very long numbered list, text only, without using tools.",
-				"rac06-message-2",
+				randomUUID(),
 				true,
 			);
 		}
 	} catch (error) {
 		result.error = error instanceof CodexError ? error.code : "probe_failed";
+		result.failedStage = stage;
+		if (error instanceof CodexError && error.rpcFailure) result.rpcFailure = error.rpcFailure;
 		if (error instanceof CodexError && error.policyChecks) result.policyChecks = error.policyChecks;
 		if (error instanceof CodexError && error.policyObserved) result.policyObserved = error.policyObserved;
 		if (error instanceof CodexError && error.diagnostics) result.diagnostics = error.diagnostics;

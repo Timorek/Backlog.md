@@ -184,6 +184,22 @@ comparison script preserves its original variant labels as a regression record.
 Adapter and diagnostic fixtures reproduce this observed behavior. A final live
 probe of the corrected production adapter is still required before completion.
 
+The next real live attempt confirmed `initialize`, strict thread policy and a
+completed model turn; a later RPC returned an error, while EOF shutdown and
+process-group termination succeeded. The old report did not identify which
+RPC failed, so it does not yet prove successful interruption. RPC errors now
+include the correlated allowlisted method, numeric error code and a best-effort
+reason category, without raw provider messages or error data. The smoke JSON
+also reports the failed stage and whether the turn-start response matches the
+observed `turn/started` identity.
+
+The interruption probe waits for the matching provider `turn/started` event
+before sending cancellation, with a bounded deadline and no retry. This tests
+interruption of a confirmed active turn rather than assuming that an optimistic
+start response is sufficient. Fresh per-message IDs prevent separate smoke runs
+from reusing the same logical message identity. Production mutation retry and
+run recovery behavior remain unchanged.
+
 Run in a normal macOS Terminal from this checkout:
 
 ```bash
