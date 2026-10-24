@@ -129,91 +129,83 @@ are not a security sandbox. Linux uses the POSIX implementation but has not
 been validated here. Windows native spawning fails closed until a process-tree
 containment/ACL implementation is verified; mock protocol code is portable.
 
-## Verification and remaining gate
+## Verification
 
-The tests cover mock protocol/adapter behavior plus actual synthetic Bun
-subprocesses on macOS: EOF, crash, stubborn descendants, descendants remaining
-after their parent exits, and blocked stdin. They also cover policy mismatch,
-request-specific reply constraints, restart fencing and early completion races.
+The [successful real adapter probe](spikes/rac-06-terminal-live-success.json)
+was supplied from the user's normal macOS Terminal using `gpt-6.1-sol`. It
+confirmed initialization, all strict thread policy checks, a completed model
+turn, matching response/started turn identities, acknowledged interruption and
+an `interrupted` completion. Shutdown exited on EOF without escalation and
+confirmed the owned process group stopped. RAC-06's real-provider gate is closed.
 
-The real adapter was attempted in this restricted session with Codex 0.162.1.
-It stopped **before initialize**, with `permissionDenied: true`; the sanitized
-result is [rac-06-local.json](spikes/rac-06-local.json). This is not a successful
-real-provider test and is not replaced by RAC-03's older ProbeRpc result.
-RAC-06 remains **In Progress** until the real-provider gate is verified.
+The last implementation checks passed 48 tests / 171 assertions across five
+files, type checking of 577 files, Biome checks of 511 files and Bun bundles of
+the adapter and smoke script. The earlier broader regression run passed 190
+tests across 12 files, including RAC-03 and RAC-05/server regressions.
 
-A subsequent [user Terminal attempt](spikes/rac-06-terminal.json) reached
-initialize successfully but was stopped by `policy_mismatch` before a model
-turn. The parent exited on EOF and the owned group was confirmed stopped after
-escalation (`forced: true`). This proves real startup/shutdown, but does not prove
-that the provider's effective policy matches RAC's restrictions. The smoke JSON
-now includes `policyChecks`: a named boolean for each expected constraint, with
-no raw configuration, paths or secrets. Any false check still blocks execution.
-When diagnosing this failure, run the default probe first; `--live` is not
-needed to inspect thread policy.
+Tests include mock protocol/adapter behavior and actual synthetic Bun processes
+on macOS: EOF, crash, stubborn descendants, descendants remaining after their
+parent exits and blocked stdin. They also cover policy mismatch, constrained
+replies, restart fencing, early completion, correlated/redacted RPC failures
+and delayed turn-start notifications in the live probe.
 
-The [second Terminal result](spikes/rac-06-terminal-policy-checks.json) matched
-cwd, approval policy, reviewer and network constraints but differed on sandbox
-type, temporary exclusions and writable roots. This does not establish whether
-the runtime returns another sandbox kind or a different representation. Error
-reports now include `policyObserved`: only recognized sandbox kinds, built-in
-profile categories, boolean flags and a writable-root count. Paths, custom
-profile names and arbitrary configuration values are not printed.
+The real provider was resolved from fixed absolute installation locations and
+spawned with the transport's deliberately constructed environment, rather than
+an interactive shell PATH. This verifies the executable discovery/environment
+part of the launchd requirement. No actual launchd job was installed or tested;
+service installation, autostart and service-account behavior remain RAC-20.
+Windows containment and persistent resume after a crash remain separate gates.
 
-To compare request variants without starting any model or tool:
+### Compatibility findings
 
-```bash
-../.rac-tools/bun-darwin-aarch64/bun scripts/rac/codex-policy-diagnostic.ts
-```
+The [real request matrix](spikes/rac-06-terminal-policy-matrix.json) showed that
+`environments: []` produced `readOnly` on the verified 0.162.1 host. Omitting that
+optional field restored `workspaceWrite` with all required checks true. The
+production adapter omits the field on thread/turn requests; it never relaxes
+policy validation or automatically retries with another profile. The diagnostic
+script retains its original variant labels as a regression record.
 
-This diagnostic uses a temporary workspace, a separate owned process for each
-variant and the same strict requested sandbox/approval policy. It compares the
-current request, omitted runtime-root/environment metadata, persistent versus
-ephemeral threads and explicit restricted thread config overrides. The checks
-remain identical for every result. It stops after startup or cleanup failure;
-no variant launches a turn or receives an approval grant. These are operator
-diagnostics only, not automatic fallback/retry behavior in the production adapter.
+A later [partial live attempt](spikes/rac-06-terminal-live-policy-fixed.json)
+completed a model turn but returned an unclassified RPC error afterwards. That
+report did not identify the failing method, so its precise cause is not proven.
+The successful final probe waits for matching `turn/started` before sending
+interruption and uses fresh per-message IDs for independent probe runs. It uses
+bounded waits and no mutation retries. RPC failure reports now include method,
+numeric code and a best-effort reason category; raw provider text/data are not
+printed. `failedStage` and turn-identity agreement distinguish startup and
+interruption failures.
 
-The [real comparison result](spikes/rac-06-terminal-policy-matrix.json) identified
-the differentiator: requests with `environments: []` returned `readOnly`;
-`without_environments`, `legacy_persistent` and `legacy_ephemeral` satisfied
-every expected constraint, including temporary-directory exclusions. Nested and
-dotted restricted config overrides did not change the empty-list outcome.
-Production now uses the verified request shape without `environments`; the
-comparison script preserves its original variant labels as a regression record.
-Adapter and diagnostic fixtures reproduce this observed behavior. A final live
-probe of the corrected production adapter is still required before completion.
+Earlier failures remain recorded independently: [restricted-session startup](spikes/rac-06-local.json),
+[first Terminal policy failure](spikes/rac-06-terminal.json), and
+[per-field policy checks](spikes/rac-06-terminal-policy-checks.json). They are
+historical diagnostics, not successful verification results.
 
-The next real live attempt confirmed `initialize`, strict thread policy and a
-completed model turn; a later RPC returned an error, while EOF shutdown and
-process-group termination succeeded. The old report did not identify which
-RPC failed, so it does not yet prove successful interruption. RPC errors now
-include the correlated allowlisted method, numeric error code and a best-effort
-reason category, without raw provider messages or error data. The smoke JSON
-also reports the failed stage and whether the turn-start response matches the
-observed `turn/started` identity.
+### Reproduce
 
-The interruption probe waits for the matching provider `turn/started` event
-before sending cancellation, with a bounded deadline and no retry. This tests
-interruption of a confirmed active turn rather than assuming that an optimistic
-start response is sufficient. Fresh per-message IDs prevent separate smoke runs
-from reusing the same logical message identity. Production mutation retry and
-run recovery behavior remain unchanged.
-
-Run in a normal macOS Terminal from this checkout:
+From this checkout in a normal macOS Terminal:
 
 ```bash
 ../.rac-tools/bun-darwin-aarch64/bun scripts/rac/codex-adapter-smoke.ts
 ../.rac-tools/bun-darwin-aarch64/bun scripts/rac/codex-adapter-smoke.ts --live --model gpt-6.1-sol
 ```
 
-The default probe creates an empty temporary workspace and tests handshake,
-thread policy and shutdown without a model turn. `--live` additionally requests
-one synthetic text-only model turn and interrupts another. It does not work on
-this repository, accepts no approvals, and never prints authentication material
-or raw provider logs. It uses the configured model when `--model` is omitted.
-Success requires `initialize: true`, `threadPolicy: true` and
-`shutdown.groupStopped: true`; live mode also requires `modelTurn: completed`
-and `interrupt: interrupted`. Inspect `exitedOnEof` and `forced` separately.
-Provider logs/state and raw rollout history stay outside Git. The smoke result
-contains only the bounded verification summary.
+The default checks handshake, thread policy and shutdown without a model turn.
+Live mode additionally completes one synthetic text-only turn and interrupts
+another. It uses an empty temporary workspace, never project tasks, and grants
+no approvals. It uses the configured model if `--model` is omitted. Success
+requires `initialize: true`, `threadPolicy: true`, `shutdown.groupStopped: true`,
+and in live mode `modelTurn: completed` plus `interrupt: interrupted`. Inspect
+`exitedOnEof` and `forced` separately. Provider artifacts stay outside Git;
+only the sanitized result is committed.
+
+For thread-policy diagnosis without any model or tool turn:
+
+```bash
+../.rac-tools/bun-darwin-aarch64/bun scripts/rac/codex-policy-diagnostic.ts
+```
+
+Each variant owns a separate process and uses identical strict policy checks.
+The diagnostic stops after startup or cleanup failure and never grants an
+approval. `policyObserved` contains only recognized sandbox/profile categories,
+boolean flags and a writable-root count; no paths or custom profile names.
+These are operator diagnostics, not production fallback behavior.
