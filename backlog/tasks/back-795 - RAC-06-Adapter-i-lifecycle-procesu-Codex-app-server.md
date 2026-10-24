@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-10-24T08:05:00Z'
-updated_date: '2026-10-24T18:53:00Z'
+updated_date: '2026-10-24T18:59:00Z'
 labels:
   - rac
   - m1-local-mvp
@@ -22,6 +22,7 @@ documentation:
   - docs/rac/CODEX-ADAPTER.md
   - docs/rac/spikes/rac-06-terminal.json
   - docs/rac/spikes/rac-06-terminal-policy-checks.json
+  - docs/rac/spikes/rac-06-terminal-policy-matrix.json
 priority: high
 ordinal: 405000
 ---
@@ -69,6 +70,8 @@ Runtime to Bun/TypeScript w istniejącym Backlog.md. Używaj jawnego --listen st
 Real Terminal smoke reached initialize but failed strict thread policy verification (policy_mismatch), with no model turn and successful process-group cleanup. Add sanitized per-field policy check diagnostics to the adapter error and smoke JSON so the actual mismatch can be identified; retain every restriction. Record this failed real-provider attempt separately and keep AC1/6 open until the mismatch is understood and a real probe succeeds.
 
 Diagnose the remaining real-host sandbox mismatch without changing production policy: share one strict policy inspector between adapter and diagnostics; expose only recognized sandbox kinds/profile categories and primitive limits; add an operator-only comparison of current versus omitted metadata, persistent/ephemeral threads and restricted thread config overrides. Each variant uses a separate owned process, has no turn/model/tool call, retains identical policy checks, and stops after startup/cleanup failure. Use the normal-Terminal comparison result to choose a demonstrated compatible request shape before editing production policy construction.
+
+User Terminal matrix identifies environments: [] as the differentiator: current/without-runtime-roots/config-overrides return readOnly; without-environments and legacy persistent/ephemeral return workspaceWrite with every required check true. Remove the optional environments field from thread/start and turn/start; retain pinned roots, explicit turn policy and every strict response check. Update fixtures to reproduce the observed distinction, save exact matrix evidence, test and commit. Require a final real --live run before completing RAC-06.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -85,4 +88,6 @@ User ran the real adapter in normal macOS Terminal: initialize=true; threadPolic
 Second Terminal result: initialize=true, threadPolicy=false, policy_mismatch; cwd/approvalPolicy/reviewer/network/runtime-roots checks true, sandbox type/tmp exclusions/writable-roots checks false. Exact sandbox discriminant and shape are not yet captured; do not infer or weaken policy from these booleans. All process group members stopped (EOF parent exit, forced cleanup true). Investigate representation versus effective policy; keep task In Progress.
 
 Added inspectCodexPolicy with unchanged strict checks and sanitized policyObserved. Unknown sandbox/profile/config strings are redacted to categories; no paths or raw config are printed. Added scripts/rac/codex-policy-diagnostic.ts: seven bounded thread-start-only variants (current, omit runtime roots, omit environment metadata, legacy persistent/ephemeral, nested/dotted restricted per-thread config). No turn/model/tool operation or approval response is sent. The production adapter has no automatic fallback or retry and its required policy is unchanged. Unit tests prove comparison differences, no execution RPC, cleanup, startup fail-fast and redaction. Verification: 44 targeted tests / 145 assertions across 4 files PASS; types 576 files PASS; Biome 508 files PASS; adapter plus diagnostic Bun bundle PASS; diff check PASS. Second user result saved unchanged in rac-06-terminal-policy-checks.json. Actual mismatch cause remains unconfirmed until the operator comparison runs outside this session; task stays In Progress, no further AC checked.
+
+User supplied the complete real-host seven-variant comparison. With environments: [] the server returned readOnly in current/without-runtime-roots/nested-config/dotted-config cases. Without environments, both pinned-runtime-roots and legacy persistent/ephemeral variants returned workspaceWrite, networkAccess=false, both tmp exclusions=true, writableRootCount=0 (implicit cwd), all nine checks=true, and groupStopped=true. Saved the exact sanitized matrix in rac-06-terminal-policy-matrix.json. The differentiator on this Codex 0.162.1 host is the optional empty environments field. Removed it from production thread/start and turn/start, retaining pinned cwd/runtime roots, explicit turn sandbox, on-request/user approvals and every strict effective policy check. Updated adapter fixture and diagnostic fixture to reproduce the real behavior; injected options cannot reintroduce the field. Verification: 44 tests / 149 assertions across 4 files PASS; types 576 files PASS; Biome 509 files PASS; adapter bundle PASS; diff check PASS. No host config edits, broader profile, policy downgrade or automatic fallback. Task remains In Progress pending one final live smoke of the corrected production adapter (completed model turn, interrupt, shutdown); no new AC checked based on mocks alone.
 <!-- SECTION:NOTES:END -->

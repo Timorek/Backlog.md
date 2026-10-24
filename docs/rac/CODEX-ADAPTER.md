@@ -58,8 +58,11 @@ absence of extra writable roots and both temporary-directory exclusions. A
 mismatch closes the connection before a turn can start. Every turn carries an
 explicit restricted `sandboxPolicy` and the same cwd/reviewer/approval policy.
 Runtime workspace roots are pinned, and extra roots in a thread response are
-rejected. New threads and turns disable optional provider environments with
-an empty environment list; steer sends no environment override.
+rejected. Thread/turn/steer requests omit the optional `environments` field.
+The verified 0.162.1 host returned `readOnly` when given an empty list; omitting
+it restored the requested `workspaceWrite` policy. All effective-policy checks
+remain mandatory; omission does not mean that arbitrary host environment or
+permission configurations are trusted without validation.
 Codex 0.162.1's turn-start response does not echo these effective policies;
 the adapter does not claim that it does. Steer has no policy overrides.
 
@@ -170,6 +173,16 @@ ephemeral threads and explicit restricted thread config overrides. The checks
 remain identical for every result. It stops after startup or cleanup failure;
 no variant launches a turn or receives an approval grant. These are operator
 diagnostics only, not automatic fallback/retry behavior in the production adapter.
+
+The [real comparison result](spikes/rac-06-terminal-policy-matrix.json) identified
+the differentiator: requests with `environments: []` returned `readOnly`;
+`without_environments`, `legacy_persistent` and `legacy_ephemeral` satisfied
+every expected constraint, including temporary-directory exclusions. Nested and
+dotted restricted config overrides did not change the empty-list outcome.
+Production now uses the verified request shape without `environments`; the
+comparison script preserves its original variant labels as a regression record.
+Adapter and diagnostic fixtures reproduce this observed behavior. A final live
+probe of the corrected production adapter is still required before completion.
 
 Run in a normal macOS Terminal from this checkout:
 

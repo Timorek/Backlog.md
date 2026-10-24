@@ -1,0 +1,238 @@
+{
+	"kind": "rac06-policy-diagnostic",
+	"platform": "darwin",
+	"modelExecution": false,
+	"results": [
+		{
+			"variant": "current",
+			"initialize": true,
+			"policyChecks": {
+				"cwdMatches": true,
+				"approvalPolicyOnRequest": true,
+				"reviewerIsUser": true,
+				"workspaceWriteSandbox": false,
+				"networkDisabled": true,
+				"slashTmpExcluded": false,
+				"tmpdirExcluded": false,
+				"runtimeRootsMatch": true,
+				"writableRootsMatch": false
+			},
+			"policyObserved": {
+				"sandboxType": "readOnly",
+				"networkAccess": false,
+				"excludeSlashTmp": null,
+				"excludeTmpdirEnvVar": null,
+				"writableRootCount": null,
+				"permissionProfile": "absent"
+			},
+			"matches": false,
+			"diagnostics": {
+				"permissionDenied": false,
+				"authenticationFailed": false
+			},
+			"shutdown": {
+				"exitedOnEof": true,
+				"forced": false,
+				"groupStopped": true
+			}
+		},
+		{
+			"variant": "without_runtime_roots",
+			"initialize": true,
+			"policyChecks": {
+				"cwdMatches": true,
+				"approvalPolicyOnRequest": true,
+				"reviewerIsUser": true,
+				"workspaceWriteSandbox": false,
+				"networkDisabled": true,
+				"slashTmpExcluded": false,
+				"tmpdirExcluded": false,
+				"runtimeRootsMatch": true,
+				"writableRootsMatch": false
+			},
+			"policyObserved": {
+				"sandboxType": "readOnly",
+				"networkAccess": false,
+				"excludeSlashTmp": null,
+				"excludeTmpdirEnvVar": null,
+				"writableRootCount": null,
+				"permissionProfile": "absent"
+			},
+			"matches": false,
+			"diagnostics": {
+				"permissionDenied": false,
+				"authenticationFailed": false
+			},
+			"shutdown": {
+				"exitedOnEof": true,
+				"forced": true,
+				"groupStopped": true
+			}
+		},
+		{
+			"variant": "without_environments",
+			"initialize": true,
+			"policyChecks": {
+				"cwdMatches": true,
+				"approvalPolicyOnRequest": true,
+				"reviewerIsUser": true,
+				"workspaceWriteSandbox": true,
+				"networkDisabled": true,
+				"slashTmpExcluded": true,
+				"tmpdirExcluded": true,
+				"runtimeRootsMatch": true,
+				"writableRootsMatch": true
+			},
+			"policyObserved": {
+				"sandboxType": "workspaceWrite",
+				"networkAccess": false,
+				"excludeSlashTmp": true,
+				"excludeTmpdirEnvVar": true,
+				"writableRootCount": 0,
+				"permissionProfile": "absent"
+			},
+			"matches": true,
+			"diagnostics": {
+				"permissionDenied": false,
+				"authenticationFailed": false
+			},
+			"shutdown": {
+				"exitedOnEof": true,
+				"forced": true,
+				"groupStopped": true
+			}
+		},
+		{
+			"variant": "legacy_persistent",
+			"initialize": true,
+			"policyChecks": {
+				"cwdMatches": true,
+				"approvalPolicyOnRequest": true,
+				"reviewerIsUser": true,
+				"workspaceWriteSandbox": true,
+				"networkDisabled": true,
+				"slashTmpExcluded": true,
+				"tmpdirExcluded": true,
+				"runtimeRootsMatch": true,
+				"writableRootsMatch": true
+			},
+			"policyObserved": {
+				"sandboxType": "workspaceWrite",
+				"networkAccess": false,
+				"excludeSlashTmp": true,
+				"excludeTmpdirEnvVar": true,
+				"writableRootCount": 0,
+				"permissionProfile": "absent"
+			},
+			"matches": true,
+			"diagnostics": {
+				"permissionDenied": false,
+				"authenticationFailed": false
+			},
+			"shutdown": {
+				"exitedOnEof": true,
+				"forced": true,
+				"groupStopped": true
+			}
+		},
+		{
+			"variant": "legacy_ephemeral",
+			"initialize": true,
+			"policyChecks": {
+				"cwdMatches": true,
+				"approvalPolicyOnRequest": true,
+				"reviewerIsUser": true,
+				"workspaceWriteSandbox": true,
+				"networkDisabled": true,
+				"slashTmpExcluded": true,
+				"tmpdirExcluded": true,
+				"runtimeRootsMatch": true,
+				"writableRootsMatch": true
+			},
+			"policyObserved": {
+				"sandboxType": "workspaceWrite",
+				"networkAccess": false,
+				"excludeSlashTmp": true,
+				"excludeTmpdirEnvVar": true,
+				"writableRootCount": 0,
+				"permissionProfile": "absent"
+			},
+			"matches": true,
+			"diagnostics": {
+				"permissionDenied": false,
+				"authenticationFailed": false
+			},
+			"shutdown": {
+				"exitedOnEof": true,
+				"forced": true,
+				"groupStopped": true
+			}
+		},
+		{
+			"variant": "current_thread_config_nested",
+			"initialize": true,
+			"policyChecks": {
+				"cwdMatches": true,
+				"approvalPolicyOnRequest": true,
+				"reviewerIsUser": true,
+				"workspaceWriteSandbox": false,
+				"networkDisabled": true,
+				"slashTmpExcluded": false,
+				"tmpdirExcluded": false,
+				"runtimeRootsMatch": true,
+				"writableRootsMatch": false
+			},
+			"policyObserved": {
+				"sandboxType": "readOnly",
+				"networkAccess": false,
+				"excludeSlashTmp": null,
+				"excludeTmpdirEnvVar": null,
+				"writableRootCount": null,
+				"permissionProfile": "absent"
+			},
+			"matches": false,
+			"diagnostics": {
+				"permissionDenied": false,
+				"authenticationFailed": false
+			},
+			"shutdown": {
+				"exitedOnEof": true,
+				"forced": true,
+				"groupStopped": true
+			}
+		},
+		{
+			"variant": "current_thread_config_dotted",
+			"initialize": true,
+			"policyChecks": {
+				"cwdMatches": true,
+				"approvalPolicyOnRequest": true,
+				"reviewerIsUser": true,
+				"workspaceWriteSandbox": false,
+				"networkDisabled": true,
+				"slashTmpExcluded": false,
+				"tmpdirExcluded": false,
+				"runtimeRootsMatch": true,
+				"writableRootsMatch": false
+			},
+			"policyObserved": {
+				"sandboxType": "readOnly",
+				"networkAccess": false,
+				"excludeSlashTmp": null,
+				"excludeTmpdirEnvVar": null,
+				"writableRootCount": null,
+				"permissionProfile": "absent"
+			},
+			"matches": false,
+			"diagnostics": {
+				"permissionDenied": false,
+				"authenticationFailed": false
+			},
+			"shutdown": {
+				"exitedOnEof": true,
+				"forced": true,
+				"groupStopped": true
+			}
+		}
+	]
+}

@@ -200,7 +200,6 @@ export class CodexAdapter {
 		return this.loadThread("thread/start", {
 			model: options.model,
 			developerInstructions: options.instructions,
-			environments: [],
 		});
 	}
 	resumeThread(threadId: string): Promise<string> {
@@ -226,7 +225,6 @@ export class CodexAdapter {
 					threadId,
 					input: [{ type: "text", text }],
 					clientUserMessageId,
-					environments: [],
 					cwd: this.workspace,
 					approvalPolicy: "on-request",
 					approvalsReviewer: "user",

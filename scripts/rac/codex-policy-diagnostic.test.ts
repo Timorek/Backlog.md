@@ -15,7 +15,7 @@ test("policy comparison reports variant differences without any model or tool ex
 					if (message.method === "initialize") channel.emit({ id: message.id, result: {} });
 					if (message.method === "thread/start") {
 						const params = rpcRecord(message.params);
-						const compatible = !params.runtimeWorkspaceRoots || params.config;
+						const compatible = params.environments === undefined;
 						channel.emit({
 							id: message.id,
 							result: {
@@ -26,7 +26,7 @@ test("policy comparison reports variant differences without any model or tool ex
 								sandbox: compatible
 									? {
 											type: "workspaceWrite",
-											writableRoots: [root],
+											writableRoots: [],
 											networkAccess: false,
 											excludeSlashTmp: true,
 											excludeTmpdirEnvVar: true,
@@ -47,7 +47,9 @@ test("policy comparison reports variant differences without any model or tool ex
 			policyObserved: { sandboxType: "readOnly", writableRootCount: null },
 		});
 		expect(results.find((value) => value.variant === "legacy_persistent")?.matches).toBe(true);
-		expect(results.find((value) => value.variant === "current_thread_config_dotted")?.matches).toBe(true);
+		expect(results.find((value) => value.variant === "without_runtime_roots")?.matches).toBe(false);
+		expect(results.find((value) => value.variant === "without_environments")?.matches).toBe(true);
+		expect(results.find((value) => value.variant === "current_thread_config_dotted")?.matches).toBe(false);
 		for (const transport of transports) {
 			expect(transport.messages.map((value) => value.method)).toEqual(["initialize", "initialized", "thread/start"]);
 			expect(rpcRecord(transport.messages[2]?.params)).toMatchObject({

@@ -40,10 +40,18 @@ function transportFixture(
 					excludeTmpdirEnvVar: true,
 				},
 			};
+			if (params.environments !== undefined) policy.sandbox = { type: "readOnly", networkAccess: false };
 			changePolicy?.(policy);
 			transport.emit({ id: message.id, result: policy });
 		}
 		if (message.method === "turn/start") {
+			if (params.environments !== undefined) {
+				transport.emit({
+					id: message.id,
+					error: { code: -32602, message: "Empty environments disables local execution in the verified host profile" },
+				});
+				return;
+			}
 			const id = `turn-${++turn}`;
 			transport.emit({ method: "turn/started", params: { threadId: "thread-1", turn: { id } } });
 			if (finishBeforeResponse && id === "turn-1")
@@ -70,7 +78,13 @@ async function running(): Promise<MockCodexTransport> {
 
 test("initializes once before thread/turn methods and ignores caller policy/path overrides", async () => {
 	const transport = await connected();
-	const options = { model: "test-model", cwd: "/", approvalPolicy: "never", sandbox: "danger-full-access" };
+	const options = {
+		model: "test-model",
+		cwd: "/",
+		approvalPolicy: "never",
+		sandbox: "danger-full-access",
+		environments: [],
+	};
 	expect(await adapter?.startThread(options)).toBe("thread-1");
 	expect(transport.messages.map((message) => message.method)).toEqual(["initialize", "initialized", "thread/start"]);
 	expect(transport.messages[2]?.params).toMatchObject({
@@ -80,7 +94,9 @@ test("initializes once before thread/turn methods and ignores caller policy/path
 		approvalsReviewer: "user",
 		model: "test-model",
 	});
+	expect(transport.messages[2]?.params).not.toHaveProperty("environments");
 	await adapter?.startTurn("thread-1", "hello", "message-1");
+	expect(transport.messages.at(-1)?.params).not.toHaveProperty("environments");
 	expect(transport.messages.at(-1)?.params).toMatchObject({
 		sandboxPolicy: {
 			networkAccess: false,
