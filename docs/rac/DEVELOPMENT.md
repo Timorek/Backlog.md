@@ -98,6 +98,19 @@ agent session cannot substitute for this system-dialog check in a normal Termina
 
 ### Checks
 
+The RAC-06 adapter has a standalone verification script, described in
+[CODEX-ADAPTER.md](CODEX-ADAPTER.md). From this checkout:
+
+```bash
+bun scripts/rac/codex-adapter-smoke.ts
+bun scripts/rac/codex-adapter-smoke.ts --live --model gpt-6.1-sol
+```
+
+The default tests only handshake, thread policy and shutdown. Live mode adds
+synthetic model execution/interruption in a temporary workspace, without granting
+approvals. It does not use project tasks. Run it in a normal Terminal when the
+restricted session reports a provider permission error.
+
 ```bash
 bun run check:types
 bun run check

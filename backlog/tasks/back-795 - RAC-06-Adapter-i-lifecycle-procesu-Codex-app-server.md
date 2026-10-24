@@ -1,10 +1,11 @@
 ---
 id: BACK-795
 title: '[RAC-06] Adapter i lifecycle procesu Codex app-server'
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - '@codex'
 created_date: '2026-10-24T08:05:00Z'
-updated_date: '2026-10-24T10:22:00Z'
+updated_date: '2026-10-24T18:37:00Z'
 labels:
   - rac
   - m1-local-mvp
@@ -18,6 +19,7 @@ dependencies:
   - BACK-794
 documentation:
   - docs/rac/decisions/0001-rac-architecture.md
+  - docs/rac/CODEX-ADAPTER.md
 priority: high
 ordinal: 405000
 ---
@@ -34,27 +36,41 @@ Runtime to Bun/TypeScript w istniejącym Backlog.md. Używaj jawnego --listen st
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [ ] #1 Adapter uruchamia app-server i kończy proces po shutdown
-- [ ] #2 JSON-RPC requests i responses korelują po id
-- [ ] #3 Rozłączenie i crash procesu są wykrywane
-- [ ] #4 stdout zdarzeń nie jest traktowane jako polecenia shella
-- [ ] #5 Testy adaptera używają mock transport
+- [x] #2 JSON-RPC requests i responses korelują po id
+- [x] #3 Rozłączenie i crash procesu są wykrywane
+- [x] #4 stdout zdarzeń nie jest traktowane jako polecenia shella
+- [x] #5 Testy adaptera używają mock transport
 - [ ] #6 Spawn i zamykanie procesu testowane na macOS; ścieżka binarki działa przy uruchomieniu z launchd
-- [ ] #7 Adapter pod Bun używa wyłącznie stdio i dozwolonych metod, bez otwartego listenera i bez metod ogólnego wykonania
-- [ ] #8 Nieobsługiwany request nie zawiesza tury; słabsza polityka blokuje start; cleanup procesów ma test na deklarowanym systemie
+- [x] #7 Adapter pod Bun używa wyłącznie stdio i dozwolonych metod, bez otwartego listenera i bez metod ogólnego wykonania
+- [x] #8 Nieobsługiwany request nie zawiesza tury; słabsza polityka blokuje start; cleanup procesów ma test na deklarowanym systemie
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 bun run check:types passes when TypeScript touched
-- [ ] #2 bun run check . passes when formatting/linting touched
-- [ ] #3 bun test (or scoped test) passes
+- [x] #1 bun run check:types passes when TypeScript touched
+- [x] #2 bun run check . passes when formatting/linting touched
+- [x] #3 bun test (or scoped test) passes
 <!-- DOD:END -->
 
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-1. Sprawdz aktualny kod i kontrakty Backlog.md oraz Codex.
-2. Napisz testy dla wymagan.
-3. Zaimplementuj minimalny zakres zgodny z architektura.
-4. Uruchom testy i zanotuj wynik w zadaniu.
+1. Verify BACK-792/793/794 are Done; preserve the pre-existing task status/ordinal edits and work only on RAC-06. Use official OpenAI Docs plus local Codex 0.162.1 experimental schema; Groma unavailable.
+2. Implement a minimal Bun stdio process transport and JSONL RPC connection under src/rac/: fixed executable/argument list, bounded frames/stderr/pending requests, strict request ID type correlation, handshake/deadlines, unknown request errors, disconnect propagation. No shell, listener or general execution RPC.
+3. Implement a Codex adapter with startThread/resumeThread, startTurn, steerOrContinue, interrupt, respondToRequest and subscribe. Pin the constructor workspace, use explicit on-request/user/workspace-write policy, verify effective thread policy and require the pinned thread before turns. Do not retry uncertain mutating RPC or automatically recover runs.
+4. Resolve the Codex binary from an explicit trusted absolute path or fixed installation locations, independent of interactive PATH. Use a deliberate child environment. Restart closes and fences the old transport, clears loaded thread/request state and performs a fresh handshake; no auto-resume.
+5. Implement EOF shutdown and bounded TERM/KILL escalation for the owned POSIX process group, including descendants remaining after the parent exits. Unsupported native process-tree containment fails closed on Windows rather than claiming validation. Test actual Bun spawning/EOF/crash/group cleanup with synthetic subprocesses on macOS.
+6. Test adapter/protocol with an in-memory transport: chunked/malformed/oversized JSONL, IDs, timeouts, allowed methods, policy mismatch, requests/responses, EOF/crash/restart and event ordering. Reject broad session grants and unsupported server requests immediately. Keep persistence and human authorizations outside this adapter.
+7. Attempt a no-model real App Server initialize/thread-policy probe; record environment failures honestly. Add a copyable Terminal smoke command if native Codex remains blocked. Do not mark real-provider or cleanup AC proven by mocks alone.
+8. Run targeted tests, existing RAC regressions, types, Biome and build. Document protocol/schema/OS and cleanup limits in docs/rac; update only proven AC, prepare scoped local commit, no push or next RAC task.
 <!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+RAC-06 implementation is available: src/rac/codex-process.ts (fixed executable resolution, Bun detached stdio transport, explicit environment, private project Codex state/log directories, EOF and bounded POSIX group escalation), codex-rpc.ts (bounded bidirectional JSONL, strict number/string IDs, method allowlist, request/write deadlines, disconnect fencing), codex-adapter.ts (handshake, verified restricted thread policy, turn/steer/interrupt, scoped replies and explicit restart).
+Evidence by criterion: AC2 out-of-order and typed RPC IDs verified; AC3 crash/stdout/write disconnect verified with mock and real Bun process; AC4 stdout is parsed as JSON data and never executed; AC5 deterministic mock transport tests; AC7 only stdio and the reviewed outbound method allowlist, no listener/shell/general execution RPC; AC8 unsupported requests receive immediate errors, weak policy fences before turn start, and actual macOS process-group cleanup tests cover orphan/stubborn children and blocked stdin. These six criteria are checked.
+AC1 and AC6 remain unchecked: real Codex 0.162.1 was spawned from the fixed absolute installation path with the adapter environment, but stopped before initialize with permissionDenied=true in this restricted session. Synthetic Bun process tests do not establish a successful real App Server handshake, effective policy or EOF shutdown. Current status remains In Progress pending normal-Terminal smoke verification. Script: scripts/rac/codex-adapter-smoke.ts, default no-model check plus --live --model gpt-6.1-sol for a synthetic completed and interrupted turn. No real project task is executed and approvals are declined. See docs/rac/CODEX-ADAPTER.md and sanitized local/schema artifacts.
+Final checks: 190 tests / 603 assertions across 12 files PASS, including RAC-03 and RAC-05/server regressions; type check 574 files PASS; Biome 504 files PASS; normal CLI build and standalone Bun adapter bundle PASS; git diff --check PASS. Native Windows containment is fail-closed; Linux not validated. Process-group proof does not cover children that escape via setsid. Manager authorization, owner lock, interaction persistence, HTTP endpoints and UI remain later task responsibilities.
+The task already had In Progress/@codex metadata and a changed ordinal at start. Preserve the existing ordinal change outside the scoped code commit. Groma is unavailable (command not found); no Groma-owned files touched. No push or next RAC task.
+<!-- SECTION:NOTES:END -->

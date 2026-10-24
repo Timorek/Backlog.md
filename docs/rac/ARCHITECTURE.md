@@ -52,3 +52,10 @@ RAC-01 is complete after user verification of the source dashboard on port 6421.
 ## RAC-04 run-state contract
 
 The first internal RAC code is documented in [RUN-STATE.md](RUN-STATE.md): immutable run records, lifecycle transitions, derived waiting, explicit unknown resolution, pure single-slot admission and a deterministic test mock. It does not add execution endpoints, storage or UI. Atomic reservation and authorization remain caller responsibilities in the later runtime tasks.
+
+## RAC-06 adapter boundary
+
+[CODEX-ADAPTER.md](CODEX-ADAPTER.md) documents the Bun stdio transport, restricted
+RPC adapter, policy checks and tested macOS process-group shutdown. This is an
+internal building block, with no execution endpoint or UI. The real-provider
+smoke test remains a separate gate from mock protocol and synthetic process tests.
