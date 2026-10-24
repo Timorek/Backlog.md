@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-10-24T08:05:00Z'
-updated_date: '2026-10-24T17:26:00Z'
+updated_date: '2026-10-24T17:34:00Z'
 labels:
   - rac
   - m1-local-mvp
@@ -69,4 +69,8 @@ Decision approved by user: macOS system authentication (Touch ID/account passwor
 RAC-05 progress: implemented src/rac/project-context.ts and project-settings.ts plus tests. Canonical root/SHA-256 identity, absolute/traversal/symlink validation, trusted session/owner project-generation binding, disabled-by-default external settings reader, strict schema/identity/POSIX permission checks, no repository-config enablement. Documentation: docs/rac/PROJECT-CONFIGURATION.md. Verification: 110 tests / 367 assertions across four RAC test files PASS; type check 562 files PASS; full Biome check 490 files PASS. No AC checked and task remains In Progress. Awaiting explicit architectural/workflow decision required by task-execution step 7: native macOS LocalAuthentication (Touch ID/system account password, fresh LAContext, no bypass flags) for local rac enable/disable, unsupported platforms fail closed. Authorization writer and CLI commands deliberately not implemented before that decision. No push or next task.
 
 User approved native macOS authorization. Implemented backlog rac enable/disable through the existing project resolver, with no bypass flags or web enable endpoint. Fresh LAContext/deviceOwnerAuthentication/zero Touch ID reuse; fixed embedded Swift helper via absolute system tool and minimal environment; no password capture. Added atomic private settings writer with authorization before mutation and root/data revalidation afterwards. Verification: 121 tests, 403 assertions, 5 RAC files PASS; full type check 565 files PASS; Biome 493 files PASS; CLI build and compiled rac help PASS; Swift helper SDK type-check PASS; git diff --check PASS. Real helper attempted in this restricted session: canEvaluatePolicy returned unavailable, helper exit 1, no settings change attempted. Native positive authentication and cancellation remain to verify in a normal macOS Terminal. Keep task In Progress, do not claim full HTTP/session authentication: this task supplies shared context guards; handlers and real authenticated session/ownership records remain gated in subsequent tasks per approved plan. Preserve unproven AC unchecked until final review/manual verification. No push or next task.
+
+User observed the native authentication dialog and cancelled it. Current local settings read enabled=false; successful native confirmation remains unverified. User explicitly declined persistent compiler caching as unnecessary for this rarely used operation; experimental cache changes were removed before commit. Keep the existing temporary helper/cache, fresh authentication and no bypass. Add only a CLI notice that opening the system dialog may take tens of seconds.
+
+Follow-up verification after removing cache optimization: 5 CLI tests / 12 assertions PASS, CLI rebuild PASS, Biome for the changed CLI file PASS, git diff --check PASS. Only the startup-delay notice and this task record differ from the previous commit. No native authorization or settings behavior changed.
 <!-- SECTION:NOTES:END -->

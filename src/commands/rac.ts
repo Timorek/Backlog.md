@@ -15,7 +15,9 @@ export function registerRacCommand(program: Command, requireProjectRoot: () => P
 			.description(`${action} RAC with system authentication (macOS)`)
 			.action(async () => {
 				const root = await requireProjectRoot();
-				console.log(`System authentication is required to ${action} RAC for ${root}.`);
+				console.log(
+					`System authentication is required to ${action} RAC for ${root}. Opening the dialog may take tens of seconds.`,
+				);
 				const settings = await setRacEnabled(root, action === "enable");
 				console.log(`RAC ${settings.enabled ? "enabled" : "disabled"} for ${settings.canonicalRoot}.`);
 			});
