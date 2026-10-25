@@ -1,0 +1,44 @@
+{
+	"kind": "rac-pr1-review-validation",
+	"date": "2026-10-25",
+	"lastFullRun": {
+		"passed": 449,
+		"failed": 5,
+		"tests": 454,
+		"files": 49,
+		"assertions": 2453,
+		"remainingFailures": "WebSocket upgrades intercepted by root HTML route"
+	},
+	"afterUpgradeFix": {
+		"passed": 11,
+		"failed": 0,
+		"tests": 11,
+		"files": 4,
+		"assertions": 54,
+		"scope": "All four affected native WebSocket regression files; includes all five previous failures"
+	},
+	"scopedBeforeUpgradeFix": {
+		"passed": 130,
+		"failed": 0,
+		"files": 14,
+		"assertions": 505
+	},
+	"upgradeDispatchUnitTests": {
+		"passed": 6,
+		"failed": 0,
+		"assertions": 32
+	},
+	"types": {
+		"passed": true,
+		"files": 593
+	},
+	"biome": {
+		"passed": true,
+		"files": 530
+	},
+	"nativeBuild": {
+		"passed": true,
+		"version": "1.55.3"
+	},
+	"launchd": "not_verified; BACK-795 remains In Progress with AC6 unchecked"
+}

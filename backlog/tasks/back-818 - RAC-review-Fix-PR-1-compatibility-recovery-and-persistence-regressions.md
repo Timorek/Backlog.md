@@ -1,11 +1,11 @@
 ---
 id: BACK-818
 title: '[RAC review] Fix PR #1 compatibility, recovery and persistence regressions'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-10-25T12:39:00Z'
-updated_date: '2026-10-25T13:40:00Z'
+updated_date: '2026-10-25T16:18:00Z'
 labels:
   - rac
 dependencies: []
@@ -14,6 +14,7 @@ references:
 documentation:
   - docs/rac/PR-1-REVIEW.md
   - docs/rac/spikes/rac-review-websocket-diagnostic.json
+  - docs/rac/spikes/rac-review-validation.json
 priority: high
 type: bug
 ordinal: 428000
@@ -27,7 +28,7 @@ The reviewed RAC foundation breaks existing dashboard clients and leaves runs un
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Existing dashboard and legacy local clients work while foreign browser mutations remain rejected and RAC retains authentication/CSRF/JSON controls.
+- [x] #1 Existing dashboard and legacy local clients work while foreign browser mutations remain rejected and RAC retains authentication/CSRF/JSON controls.
 - [x] #2 Authenticated human resolve through CLI/API releases unknown slots only after explicit stop confirmation and never resumes or kills an unverified process.
 - [x] #3 Task lookup honors the configured prefix and Git remains optional; expected provider interruption/validation errors do not unnecessarily become unknown.
 - [x] #4 Common env/URL/private-key secrets are redacted, oversized serialized messages are bounded without wedging the run, and transient credential retention expires.
@@ -56,4 +57,12 @@ Implemented compatibility/security, cache/error, project-ID/Git, human resolve, 
 Checkpoint validation: 130 pass /0 fail /505 assertions across14 scoped files; types pass593 files; Biome passes529 files; official native CLI build succeeds (version1.55.3 and resolve help). The first external full suite remains446 pass /6 fail; residual WS-Origin and untyped-decision cases have since been fixed and covered locally. Await the final full external HTTP/WS rerun before checking AC1 or marking Done. Human resolve, canonical prefix/Git behavior, sanitized serialized payloads and expiring credentials, terminal request retirement and fail-closed route registration have targeted passing evidence. This checkpoint is a local commit only; no push.
 
 Second real full suite: 449 pass /5 fail /2453 assertions across49 files. The remaining five failures were not missing Origin: native root HTML routing returned HTTP200 to valid upgrades. User ran a short real WebSocket probe: identical matching-Origin handshake failed with200 on baseline and opened with101 when upgrade dispatch preceded rendering. Added that exact guard-first production dispatch, case-insensitive upgrade matching and a regression proving valid101 /foreign403 without invoking HTML. Stored diagnostic at docs/rac/spikes/rac-review-websocket-diagnostic.json. Await the four affected native WS files only; previously passing449 cases are unchanged.
+
+Final real Terminal verification after 44721c70: all four affected native WebSocket regression files pass, 11 tests /0 failures /54 assertions. This includes all five failures from the preceding full454-test run (449 pass /5 fail). The expected corpus-failure scenario is an intentional passing recovery test. Other previously passing cases were unchanged; do not represent these separate runs as a fresh full454-test run. Socket-free configured-route regression additionally passes6 tests /32 assertions, including authorized101 and foreign403. Prior scoped run130 pass /0 fail /505 assertions; final types593 and Biome530 pass; official native CLI build succeeds. Exact handshake diagnostic and summarized validation are committed under docs/rac/spikes/. All six AC and three DoD verified. BACK-795 remains In Progress with AC6 unchecked because actual launchd execution is unverified. The pre-existing user ordinal1000 is preserved and unstaged. No push and no next RAC task.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Fixed the confirmed PR #1 regressions: legacy/browser API compatibility, cache/error handling, numeric project IDs and optional Git, authenticated human recovery, bounded/redacted payloads and credential lifetimes, stale terminal requests and fail-closed route wrapping. Root WebSocket upgrades now dispatch after Host/Origin validation and before HTML; the real four-file regression passes11/11 and covers all five remaining failures from the prior449-pass full run. Types, lint and native build pass. Corrected RAC-06 status rather than claiming untested launchd evidence. Local corrections only; no push or RAC-09 work.
+<!-- SECTION:FINAL_SUMMARY:END -->

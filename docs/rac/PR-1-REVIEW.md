@@ -44,6 +44,9 @@ instead of upgrading. A real Terminal diagnostic confirmed200 before routing the
 upgrade first and101 after that change, with the same matching Origin. The
 production guard now dispatches authorized upgrades before HTML rendering, while
 foreign/missing Origin is still rejected before any upgrade. Exact diagnostic:
-[WebSocket probe](spikes/rac-review-websocket-diagnostic.json). The four affected
-native WebSocket test files require a final targeted run before closing BACK-818. Restricted-session process-group probes can fail with EPERM; they are
+[WebSocket probe](spikes/rac-review-websocket-diagnostic.json). The final targeted run of all four affected native WebSocket files passed11 tests,
+0 failures and54 assertions. All five previous failures are covered by that run.
+The other449 previously passing full-suite cases were not unnecessarily rerun;
+no fresh all454-in-one-run result is claimed. Validation summary:
+[recorded checks](spikes/rac-review-validation.json). Restricted-session process-group probes can fail with EPERM; they are
 not treated as proof of missing groups or bypassed to obtain a green result.
