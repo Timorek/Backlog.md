@@ -38,6 +38,12 @@ server's missing/foreign Origin rejection remains tested.
 
 The first real Terminal run passed 446 tests and exposed six residual cases:
 five native WebSocket clients missing Origin and one legacy untyped decision PUT.
-Those cases were corrected; final full-server rerun is required before closing
-BACK-818. Restricted-session process-group probes can fail with EPERM; they are
+After correcting those clients, the next full run passed449 tests and exposed
+five remaining socket failures: the guarded native root HTML route returned200
+instead of upgrading. A real Terminal diagnostic confirmed200 before routing the
+upgrade first and101 after that change, with the same matching Origin. The
+production guard now dispatches authorized upgrades before HTML rendering, while
+foreign/missing Origin is still rejected before any upgrade. Exact diagnostic:
+[WebSocket probe](spikes/rac-review-websocket-diagnostic.json). The four affected
+native WebSocket test files require a final targeted run before closing BACK-818. Restricted-session process-group probes can fail with EPERM; they are
 not treated as proof of missing groups or bypassed to obtain a green result.

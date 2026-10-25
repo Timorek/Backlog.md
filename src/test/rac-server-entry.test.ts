@@ -195,3 +195,21 @@ test("legacy local clients and the three reviewed dashboard actions reach their 
 	});
 	expect((await route("/api/drafts/:id/promote", "POST")(promote)).status).toBe(200);
 });
+
+test("authorized root upgrades dispatch before HTML while foreign origins never reach upgrade", async () => {
+	const before = upgrades;
+	const rejected = await route("/")(request("/", { upgrade: "websocket", origin: "https://evil.test" }));
+	expect(rejected.status).toBe(403);
+	expect(upgrades).toBe(before);
+	const failed = await route("/")(request("/", { upgrade: "websocket", origin: "http://127.0.0.1:6421" }));
+	expect(failed.status).toBe(400);
+	expect(upgrades).toBe(before + 1);
+	const success = spyOn(native, "upgrade").mockReturnValue(true);
+	try {
+		const response = await route("/")(request("/", { upgrade: "WebSocket", origin: "http://127.0.0.1:6421" }));
+		expect(response.status).toBe(101);
+		expect(await response.text()).toBe("");
+	} finally {
+		success.mockRestore();
+	}
+});

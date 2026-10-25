@@ -124,7 +124,7 @@ The in-memory known-secret registry is bounded to 512 values. Pair-code protecti
 All native API handlers, HTML, bundled/project assets and fallback requests check
 the exact loopback Host and listening port. Foreign Origin and cross-site fetch
 metadata are rejected, except safe top-level document navigation from another site. Browser mutations and all RAC mutations require the matching Origin; WebSocket upgrades and event-stream requests require it too. Existing non-browser local API clients without browser metadata/cookies can omit Origin. RAC mutations always require JSON. Ordinary requests with a body require JSON except the existing decision editor PUT, which preserves plain text/Markdown (including legacy requests without Content-Type); bodyless ordinary actions do not need a synthetic JSON header.
-Rejection happens before dispatch, parsing or task mutation. No CORS grant or
+Rejection happens before dispatch, parsing or task mutation. Authorized WebSocket upgrades dispatch before native HTML rendering, so the root task-update socket receives101 rather than the SPA response. No CORS grant or
 reverse-proxy trust is introduced. Existing ordinary task routes remain usable
 without RAC pairing; whole-dashboard identity protection for remote access is
 still RAC-18/19. Do not publish the listener or put a tunnel in front of it yet.

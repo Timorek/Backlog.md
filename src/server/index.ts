@@ -792,6 +792,8 @@ export class BacklogServer {
 		try {
 			checkLocalRequest(req, this.server?.port ?? port);
 			if (this._stopping) return Response.json({ error: "Server is stopping" }, { status: 503 });
+			if (req.headers.get("upgrade")?.toLowerCase() === "websocket" && this.server)
+				return await this.handleRequest(req, this.server);
 			const response = await action();
 			if ((req.method === "GET" || req.method === "HEAD") && !this.isDashboardAsset(req))
 				applyNoStoreHeaders(response.headers);
@@ -805,7 +807,7 @@ export class BacklogServer {
 
 	private async handleRequest(req: Request, server: Server<unknown>): Promise<Response> {
 		// Handle WebSocket upgrade
-		if (req.headers.get("upgrade") === "websocket") {
+		if (req.headers.get("upgrade")?.toLowerCase() === "websocket") {
 			const success = server.upgrade(req, { data: undefined });
 			if (success) {
 				return new Response(null, { status: 101 }); // WebSocket upgrade response

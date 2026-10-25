@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-10-25T12:39:00Z'
-updated_date: '2026-10-25T13:22:00Z'
+updated_date: '2026-10-25T13:40:00Z'
 labels:
   - rac
 dependencies: []
@@ -13,6 +13,7 @@ references:
   - https://github.com/Timorek/Backlog.md/pull/1#pullrequestreview-5643177040
 documentation:
   - docs/rac/PR-1-REVIEW.md
+  - docs/rac/spikes/rac-review-websocket-diagnostic.json
 priority: high
 type: bug
 ordinal: 428000
@@ -53,4 +54,6 @@ The reviewed RAC foundation breaks existing dashboard clients and leaves runs un
 Implemented compatibility/security, cache/error, project-ID/Git, human resolve, denial-selection, serialized truncation/redaction, expiring credential protection and old terminal interaction fixes. Existing WebSocket tests now provide the same Origin as browser clients, without weakening server checks. Initial real Terminal regression: 446 pass /6 fail; the residual five Origin-less WS clients and one decision PUT without Content-Type were corrected. Final external rerun is pending. Native CLI builds; types/lint and scoped regression tests pass. Restricted-session descendant process probes can return EPERM; retain fail-closed cleanup and rely on the real Terminal process tests, which passed in the first external run. BACK-795 reopened with AC6 unchecked; no launchd job was installed or claimed verified. Preserve its unrelated user ordinal1000 outside the commit.
 
 Checkpoint validation: 130 pass /0 fail /505 assertions across14 scoped files; types pass593 files; Biome passes529 files; official native CLI build succeeds (version1.55.3 and resolve help). The first external full suite remains446 pass /6 fail; residual WS-Origin and untyped-decision cases have since been fixed and covered locally. Await the final full external HTTP/WS rerun before checking AC1 or marking Done. Human resolve, canonical prefix/Git behavior, sanitized serialized payloads and expiring credentials, terminal request retirement and fail-closed route registration have targeted passing evidence. This checkpoint is a local commit only; no push.
+
+Second real full suite: 449 pass /5 fail /2453 assertions across49 files. The remaining five failures were not missing Origin: native root HTML routing returned HTTP200 to valid upgrades. User ran a short real WebSocket probe: identical matching-Origin handshake failed with200 on baseline and opened with101 when upgrade dispatch preceded rendering. Added that exact guard-first production dispatch, case-insensitive upgrade matching and a regression proving valid101 /foreign403 without invoking HTML. Stored diagnostic at docs/rac/spikes/rac-review-websocket-diagnostic.json. Await the four affected native WS files only; previously passing449 cases are unchanged.
 <!-- SECTION:NOTES:END -->
