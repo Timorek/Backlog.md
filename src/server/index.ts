@@ -11,6 +11,10 @@ import { loadTaskDetail } from "../core/task-detail.ts";
 import { isCreateLockError, isTaskLockError } from "../file-system/operations.ts";
 import { BacklogToolError } from "../mcp/errors/mcp-errors.ts";
 import { MilestoneHandlers } from "../mcp/tools/milestones/handlers.ts";
+import { LocalRacAccess, readOwnerDescriptor } from "../rac/local-access.ts";
+import { AgentManager } from "../rac/manager.ts";
+import { type RacOwner, type RacSession, validateRacContext } from "../rac/project-context.ts";
+import { loadRacSettings } from "../rac/project-settings.ts";
 import {
 	type ContentRecordKind,
 	DOCUMENT_TYPE_VALUES,
@@ -37,6 +41,9 @@ import { formatValidStatuses, getCanonicalStatuses, getValidStatuses } from "../
 import { isValidTaskId } from "../utils/task-id.ts";
 import { isAmbiguousTaskIdError, LOCAL_TASK_LOOKUP_HINT, taskNotFoundMessage } from "../utils/task-path.ts";
 import { getVersion } from "../utils/version.ts";
+import { dashboardResponses } from "./dashboard-bundle.ts";
+import { checkLocalRequest, guardLocalRoutes, LocalRequestError, localError } from "./local-policy.ts";
+import { RacHttp } from "./rac-http.ts";
 
 // Regex pattern to match any prefix (letters followed by dash)
 const PREFIX_PATTERN = /^[a-zA-Z]+-/i;
@@ -248,6 +255,10 @@ export async function findNextAvailablePort(startPort: number, maxPort = MAX_POR
 
 export class BacklogServer {
 	private core: Core;
+	private readonly racDataRoot?: string;
+	private readonly racConnect?: (root: string) => Promise<import("../rac/codex-adapter.ts").CodexAdapter>;
+	private racHttp?: RacHttp;
+	private dashboardAssets = new Set<string>();
 	private server: Server<unknown> | null = null;
 	private runtimeWorkingDirectory: string | null = null;
 	private projectName = "Untitled Project";
@@ -262,8 +273,22 @@ export class BacklogServer {
 	private pendingDataBroadcastScope: "tasks" | "milestones" = "tasks";
 	private storeReadyBroadcasted = false;
 
-	constructor(projectPath: string) {
+	constructor(
+		projectPath: string,
+		options: {
+			racDataRoot?: string;
+			racConnect?: (root: string) => Promise<import("../rac/codex-adapter.ts").CodexAdapter>;
+		} = {},
+	) {
 		this.core = new Core(projectPath, { enableWatchers: true });
+		this.racDataRoot = options.racDataRoot;
+		this.racConnect = options.racConnect;
+	}
+
+	// Callers must supply authenticated server-side session and lock-backed owner records, never request JSON.
+	async authorizeRacWorkspace(owner: RacOwner, session: RacSession | undefined): Promise<string> {
+		const settings = await loadRacSettings(this.core.filesystem.rootDir, this.racDataRoot);
+		return validateRacContext(settings, owner, session);
 	}
 
 	private async resolveMilestoneInput(milestone: string): Promise<string> {
@@ -401,10 +426,11 @@ export class BacklogServer {
 		const shouldOpenBrowser = openBrowser && (config?.autoOpenBrowser ?? true);
 
 		try {
+			const dashboard = await dashboardResponses(spaIndexHtml);
 			const serveOptions = {
 				port: finalPort,
 				hostname: BROWSER_HOST,
-				development: process.env.NODE_ENV === "development",
+				development: false,
 				routes: {
 					"/": spaIndexHtml,
 					"/tasks": spaIndexHtml,
@@ -536,10 +562,14 @@ export class BacklogServer {
 					},
 				},
 				fetch: async (req: Request, server: Server<unknown>) => {
-					const res = await this.handleRequest(req, server);
+					const res = await this.guardIncoming(
+						req,
+						finalPort,
+						async () => (await this.racHttp?.handle(req)) ?? (await this.handleRequest(req, server)),
+					);
 
 					// Disable caching for GET/HEAD so browser always fetches latest content
-					if (req.method === "GET" || req.method === "HEAD") {
+					if ((req.method === "GET" || req.method === "HEAD") && !this.isDashboardAsset(req)) {
 						applyNoStoreHeaders(res.headers);
 					}
 
@@ -563,6 +593,16 @@ export class BacklogServer {
 				},
 				/* biome-ignore format: keep cast on single line below for type narrowing */
 			};
+			const routes = serveOptions.routes as Record<string, unknown>;
+			guardLocalRoutes(
+				routes,
+				spaIndexHtml,
+				() => dashboard.index.clone(),
+				(request, action) => this.guardIncoming(request, finalPort, action),
+			);
+			this.dashboardAssets = new Set(dashboard.assets.keys());
+			for (const [path, response] of dashboard.assets)
+				routes[path] = (request: Request) => this.guardIncoming(request, finalPort, () => response.clone());
 			const bundleAssetDirectory = process.env[BUNDLE_ASSET_DIR_ENV]?.trim();
 			if (bundleAssetDirectory) {
 				this.runtimeWorkingDirectory = process.cwd();
@@ -575,7 +615,32 @@ export class BacklogServer {
 				this.restoreRuntimeWorkingDirectory();
 				throw error;
 			}
-			const url = `http://${BROWSER_HOST}:${finalPort}`;
+			const url = `http://${BROWSER_HOST}:${this.server.port}`;
+			let manager: AgentManager | undefined;
+			try {
+				if ((await loadRacSettings(this.core.filesystem.rootDir, this.racDataRoot)).enabled) {
+					manager = await AgentManager.open(this.core.filesystem.rootDir, {
+						core: this.core,
+						dataRoot: this.racDataRoot,
+						connect: this.racConnect,
+					});
+					const ownedManager = manager;
+					const access = new LocalRacAccess(manager.store.owner, Date.now, (value, expiresAt) =>
+						ownedManager.store.registerRedactionSecret(value, expiresAt),
+					);
+					manager.store.assertOwnership();
+					await access.publish(`${url}/`, this.racDataRoot);
+					this.racHttp = new RacHttp(manager, access);
+					console.log("RAC owner ready. Pair this dashboard with: backlog rac pair");
+				}
+			} catch {
+				await manager?.close();
+				console.warn("RAC is unavailable in this instance; ordinary Backlog remains available.");
+				try {
+					const owner = await readOwnerDescriptor(this.core.filesystem.rootDir, this.racDataRoot);
+					console.warn(`RAC owner address: ${owner.url}`);
+				} catch {}
+			}
 			console.log(`🚀 Backlog.md browser interface running at ${url}`);
 			console.log(`📊 Project: ${this.projectName}`);
 			const stopKey = process.platform === "darwin" ? "Cmd+C" : "Ctrl+C";
@@ -614,6 +679,8 @@ export class BacklogServer {
 		if (this.taskBroadcastTimer) clearTimeout(this.taskBroadcastTimer);
 		if (this._stopping) return;
 		this._stopping = true;
+		await this.racHttp?.close();
+		this.racHttp = undefined;
 
 		// Stop filesystem watcher first to reduce churn
 		try {
@@ -712,9 +779,35 @@ export class BacklogServer {
 		}
 	}
 
+	private isDashboardAsset(request: Request): boolean {
+		const path = new URL(request.url).pathname;
+		return path.startsWith("/assets/") || this.dashboardAssets.has(path);
+	}
+
+	private async guardIncoming(
+		req: Request,
+		port: number,
+		action: () => Response | Promise<Response>,
+	): Promise<Response> {
+		try {
+			checkLocalRequest(req, this.server?.port ?? port);
+			if (this._stopping) return Response.json({ error: "Server is stopping" }, { status: 503 });
+			if (req.headers.get("upgrade")?.toLowerCase() === "websocket" && this.server)
+				return await this.handleRequest(req, this.server);
+			const response = await action();
+			if ((req.method === "GET" || req.method === "HEAD") && !this.isDashboardAsset(req))
+				applyNoStoreHeaders(response.headers);
+			return response;
+		} catch (error) {
+			return error instanceof LocalRequestError
+				? localError(error)
+				: this.handleError(error instanceof Error ? error : new Error("Request failed"));
+		}
+	}
+
 	private async handleRequest(req: Request, server: Server<unknown>): Promise<Response> {
 		// Handle WebSocket upgrade
-		if (req.headers.get("upgrade") === "websocket") {
+		if (req.headers.get("upgrade")?.toLowerCase() === "websocket") {
 			const success = server.upgrade(req, { data: undefined });
 			if (success) {
 				return new Response(null, { status: 101 }); // WebSocket upgrade response

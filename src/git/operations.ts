@@ -292,7 +292,7 @@ export class GitOperations {
 		}
 	}
 
-	private async assertNoCommitOperationInProgress(repoRoot: string): Promise<void> {
+	async assertNoCommitOperationInProgress(repoRoot: string): Promise<void> {
 		const operationMarkers = [
 			{ path: "MERGE_HEAD", name: "merge" },
 			{ path: "rebase-merge", name: "rebase" },

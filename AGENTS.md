@@ -137,3 +137,55 @@ Do not edit Backlog task, draft, document, decision, or milestone markdown files
 
 This project uses Groma. Before you scan, inspect, or curate architecture, or change files for a Backlog task, run `groma agent-instructions` and read the guide it names for that job. When it reports a first scan, ask the user whether they want you to curate the architecture. Do not edit Groma-owned architecture files directly.
 <!-- groma:end -->
+
+## Remote Agent Control (RAC) — Development Rules
+
+### Architecture
+
+- Develop RAC directly inside this Backlog.md fork. Use its existing frontend, backend, CLI, API, task models and components; do not create a separate application or Kanban dashboard or duplicate existing capabilities.
+- Preserve MANIFESTO.md: RAC is optional, Markdown tasks remain the source of truth, and shared semantics and the canonical CLI precede UI adapters. The dashboard is the primary human interface for this fork; it does not replace CLI semantics. Preserve desktop-first behavior and support phone access without promising mobile feature parity.
+- Keep modules small and compatible with upstream. Development runs on macOS; do not assume the eventual agent host OS. Validate platform-dependent spawning, sandboxing, paths and service management on each supported host.
+- Record architectural decisions in docs/rac/. The current architecture document is a proposal for RAC-02, not approval to implement later tasks.
+
+### Task management
+
+- Backlog.md is the source of truth for RAC requirements, dependencies and statuses. Use the existing CLI for every task mutation; never edit task Markdown directly or allocate IDs manually.
+- RAC-XX is a roadmap key in the title; use the actual BACK-* ID returned by the CLI. Find tasks with `bun run cli task list --labels rac --json`.
+- Before starting, read the description, acceptance criteria, dependency graph and Implementation Plan. Start only when dependencies are fulfilled; missing or ambiguous identities block work.
+- Assign active work to yourself and use the configured statuses (To Do, In Progress, Done). Record meaningful decisions in the task or docs/rac/.
+- Imported package plans are preserved as historical proposals at the user's explicit request. Revalidate and replace them with a researched plan when picking up a task; importing a plan does not activate the task or approve its architecture. For newly authored future tasks, follow the existing no-speculative-plan rule.
+- Verify acceptance criteria and record test results before checking items or completing work. Do not mark incomplete work Done; leave failed checks, blockers and manual verification steps visible.
+
+### Standard Codex workflow
+
+When the user says `Zrób następny task RAC`:
+
+1. Read the current backlog through the CLI.
+2. Inspect dependencies and statuses; use the readiness filter and verify the selected task's dependency graph.
+3. Select the highest-priority ready, unfinished RAC task; break equal-priority ties by RAC roadmap order.
+4. Read all requirements for that task.
+5. Prepare or revalidate its Implementation Plan and save it through the CLI. Obtain review before implementation when required by the existing task-execution rules.
+6. Implement the scoped change using existing Backlog.md modules.
+7. Add or update meaningful tests.
+8. Run the relevant quality checks.
+9. Verify Acceptance Criteria with evidence.
+10. Update the task status, acceptance checklist, test record and durable documentation.
+11. Report the result and remaining limitations.
+
+If the user specifies a task, work on that task instead, while honoring its dependencies. Stop after the current task unless the user explicitly requests multiple tasks. Do not automatically start the next one.
+
+### Safety
+
+- Obtain permission for destructive Git operations. Keep changes within the task scope.
+- Do not run agents with unlimited permissions or expose an unsecured command-execution API.
+- Keep secrets and tokens out of the repository. Use explicit workspace allowlists and bounded sandbox/approval policies.
+- Local `rac enable/disable` uses system authentication by default. The user explicitly approved `--skip-system-auth` as a CLI-only bypass; it does not elevate OS privileges or bypass filesystem, HTTP or agent-operation policies. Do not enable RAC automatically as part of implementing a task.
+- Never push automatically; require an explicit user instruction to push.
+- Keep the existing dashboard on loopback until backend authentication, authorization and CSRF protections are verified. Do not publish raw Codex App Server or runner endpoints.
+
+### Continuity
+
+- AGENTS.md stores permanent project rules.
+- Backlog.md stores task requirements, plans, evidence and status.
+- docs/rac/ stores architectural decisions and development instructions.
+- Save important findings in the repository rather than only in conversation history. Report conflicts with existing rules and propose a resolution; do not silently rewrite the manifesto.

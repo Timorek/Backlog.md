@@ -5,7 +5,7 @@ import { Core } from "../core/backlog.ts";
 import { serializeTask } from "../markdown/serializer.ts";
 import { BacklogServer } from "../server/index.ts";
 import type { Task } from "../types/index.ts";
-import { createUniqueTestDir, retry, safeCleanup, sleep, withTimeout } from "./test-utils.ts";
+import { createUniqueTestDir, openLocalWebSocket, retry, safeCleanup, sleep, withTimeout } from "./test-utils.ts";
 
 let testDir: string;
 let server: BacklogServer | null = null;
@@ -60,7 +60,7 @@ afterEach(async () => {
 describe("reorder WebSocket publication", () => {
 	it("returns every changed task and publishes one reconciliation after a multi-task ordinal rebalance", async () => {
 		const messages: string[] = [];
-		socket = new WebSocket(`ws://127.0.0.1:${serverPort}`);
+		socket = openLocalWebSocket(serverPort);
 		await withTimeout(
 			new Promise<void>((resolve, reject) => {
 				if (!socket) return reject(new Error("WebSocket was not created"));

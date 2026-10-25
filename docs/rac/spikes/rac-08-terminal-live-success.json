@@ -1,0 +1,14 @@
+{
+	"kind": "rac08-http-smoke",
+	"liveRequested": true,
+	"guardedHtmlAssetsAndApi": true,
+	"foreignStreamsRejected": true,
+	"pairingAndCsrf": true,
+	"idempotentStart": true,
+	"busy409": true,
+	"runStatus": "completed",
+	"noImplementationFile": true,
+	"planSaved": true,
+	"taskNotDone": true,
+	"ok": true
+}

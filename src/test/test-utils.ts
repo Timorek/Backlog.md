@@ -16,6 +16,11 @@ import type { FileSystem } from "../file-system/operations.ts";
 import { serializeTask } from "../markdown/serializer.ts";
 import type { Task } from "../types/index.ts";
 
+export function openLocalWebSocket(port: number): WebSocket {
+	const NativeWebSocket = WebSocket as unknown as { new (url: string, options: Bun.WebSocketOptions): WebSocket };
+	return new NativeWebSocket(`ws://127.0.0.1:${port}`, { headers: { Origin: `http://127.0.0.1:${port}` } });
+}
+
 /**
  * Creates a unique test directory name to avoid conflicts in parallel execution
  * All test directories are created under tmp/ to keep the root directory clean

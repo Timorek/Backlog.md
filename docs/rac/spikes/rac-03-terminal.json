@@ -1,0 +1,864 @@
+{
+	"evidenceKind": "user_terminal_live_run",
+	"reportedAt": "2026-10-24",
+	"report": {
+		"kind": "real-app-server-probe",
+		"liveRequested": true,
+		"platform": "darwin",
+		"initialize": true,
+		"modelExecution": "verified",
+		"effectivePolicyVerified": true,
+		"structuredQuestion": "not_observed",
+		"approval": "observed_and_denied",
+		"interrupt": "verified",
+		"fallback": "two_successful_turns_same_thread",
+		"resume": "not_supported_for_probe_thread",
+		"sandboxIsolation": "not_tested",
+		"availableModels": [
+			"gpt-6.1-sol",
+			"gpt-6-astra",
+			"gpt-6-sol",
+			"gpt-6-luna",
+			"gpt-5.6-sol",
+			"gpt-5.6-terra",
+			"gpt-5.6-luna"
+		],
+		"model": "gpt-6.1-sol",
+		"outsideFileCreated": false,
+		"shutdown": {
+			"exitedOnEof": true,
+			"forced": false
+		},
+		"diagnostics": {
+			"exitCode": 0,
+			"permissionDenied": false,
+			"stateInitializationFailed": false,
+			"authenticationFailed": false
+		},
+		"serverRequestMethods": [
+			{
+				"method": "item/commandExecution/requestApproval"
+			}
+		]
+	},
+	"trace": [
+		{
+			"direction": "client",
+			"id": 1,
+			"method": "initialize",
+			"paramKeys": ["clientInfo", "capabilities"]
+		},
+		{
+			"direction": "server",
+			"id": 1,
+			"resultKeys": ["userAgent", "codexHome", "platformFamily", "platformOs"]
+		},
+		{
+			"direction": "client",
+			"method": "initialized",
+			"paramKeys": []
+		},
+		{
+			"direction": "client",
+			"id": 2,
+			"method": "model/list",
+			"paramKeys": ["limit"]
+		},
+		{
+			"direction": "server",
+			"method": "remoteControl/status/changed",
+			"paramKeys": ["status", "serverName", "installationId", "environmentId"]
+		},
+		{
+			"direction": "server",
+			"method": "account/updated",
+			"paramKeys": ["authMode", "planType"]
+		},
+		{
+			"direction": "server",
+			"id": 2,
+			"resultKeys": ["data", "nextCursor"]
+		},
+		{
+			"direction": "client",
+			"id": 3,
+			"method": "thread/start",
+			"paramKeys": ["approvalPolicy", "approvalsReviewer", "sandbox", "cwd", "ephemeral", "developerInstructions"]
+		},
+		{
+			"direction": "server",
+			"id": 3,
+			"resultKeys": [
+				"thread",
+				"model",
+				"modelProvider",
+				"serviceTier",
+				"disabledPluginIds",
+				"cwd",
+				"runtimeWorkspaceRoots",
+				"instructionSources",
+				"approvalPolicy",
+				"approvalsReviewer",
+				"sandbox",
+				"activePermissionProfile",
+				"reasoningEffort",
+				"multiAgentMode"
+			]
+		},
+		{
+			"direction": "client",
+			"id": 4,
+			"method": "thread/resume",
+			"paramKeys": ["approvalPolicy", "approvalsReviewer", "sandbox", "cwd", "threadId", "excludeTurns"]
+		},
+		{
+			"direction": "server",
+			"method": "thread/started",
+			"paramKeys": ["thread"]
+		},
+		{
+			"direction": "server",
+			"method": "mcpServer/startupStatus/updated",
+			"paramKeys": ["threadId", "name", "status", "error", "failureReason"]
+		},
+		{
+			"direction": "server",
+			"id": 4,
+			"errorCode": -32600
+		},
+		{
+			"direction": "client",
+			"id": 5,
+			"method": "turn/start",
+			"paramKeys": ["threadId", "input", "sandboxPolicy", "approvalPolicy", "approvalsReviewer"]
+		},
+		{
+			"direction": "server",
+			"method": "thread/settings/updated",
+			"paramKeys": ["threadId", "threadSettings"]
+		},
+		{
+			"direction": "server",
+			"id": 5,
+			"resultKeys": ["turn"],
+			"turnStatus": "inProgress"
+		},
+		{
+			"direction": "server",
+			"method": "thread/status/changed",
+			"paramKeys": ["threadId", "status"]
+		},
+		{
+			"direction": "server",
+			"method": "turn/started",
+			"paramKeys": ["threadId", "turn"],
+			"turnStatus": "inProgress"
+		},
+		{
+			"direction": "server",
+			"method": "mcpServer/startupStatus/updated",
+			"paramKeys": ["threadId", "name", "status", "error", "failureReason"]
+		},
+		{
+			"direction": "server",
+			"method": "item/started",
+			"paramKeys": ["item", "threadId", "turnId", "startedAtMs"],
+			"itemType": "userMessage"
+		},
+		{
+			"direction": "server",
+			"method": "item/completed",
+			"paramKeys": ["item", "threadId", "turnId", "completedAtMs"],
+			"itemType": "userMessage"
+		},
+		{
+			"direction": "server",
+			"method": "item/started",
+			"paramKeys": ["item", "threadId", "turnId", "startedAtMs"],
+			"itemType": "reasoning"
+		},
+		{
+			"direction": "server",
+			"method": "item/completed",
+			"paramKeys": ["item", "threadId", "turnId", "completedAtMs"],
+			"itemType": "reasoning"
+		},
+		{
+			"direction": "server",
+			"method": "item/started",
+			"paramKeys": ["item", "threadId", "turnId", "startedAtMs"],
+			"itemType": "agentMessage"
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "turn/moderationMetadata",
+			"paramKeys": ["threadId", "turnId", "metadata"]
+		},
+		{
+			"direction": "server",
+			"method": "item/completed",
+			"paramKeys": ["item", "threadId", "turnId", "completedAtMs"],
+			"itemType": "agentMessage"
+		},
+		{
+			"direction": "server",
+			"method": "thread/tokenUsage/updated",
+			"paramKeys": ["threadId", "turnId", "tokenUsage"]
+		},
+		{
+			"direction": "server",
+			"method": "account/rateLimits/updated",
+			"paramKeys": ["rateLimits"]
+		},
+		{
+			"direction": "server",
+			"method": "thread/status/changed",
+			"paramKeys": ["threadId", "status"]
+		},
+		{
+			"direction": "server",
+			"method": "turn/completed",
+			"paramKeys": ["threadId", "turn"],
+			"turnStatus": "completed"
+		},
+		{
+			"direction": "client",
+			"id": 6,
+			"method": "turn/start",
+			"paramKeys": ["threadId", "input", "sandboxPolicy", "approvalPolicy", "approvalsReviewer", "outputSchema"]
+		},
+		{
+			"direction": "server",
+			"id": 6,
+			"resultKeys": ["turn"],
+			"turnStatus": "inProgress"
+		},
+		{
+			"direction": "server",
+			"method": "thread/status/changed",
+			"paramKeys": ["threadId", "status"]
+		},
+		{
+			"direction": "server",
+			"method": "turn/started",
+			"paramKeys": ["threadId", "turn"],
+			"turnStatus": "inProgress"
+		},
+		{
+			"direction": "server",
+			"method": "item/started",
+			"paramKeys": ["item", "threadId", "turnId", "startedAtMs"],
+			"itemType": "userMessage"
+		},
+		{
+			"direction": "server",
+			"method": "item/completed",
+			"paramKeys": ["item", "threadId", "turnId", "completedAtMs"],
+			"itemType": "userMessage"
+		},
+		{
+			"direction": "server",
+			"method": "item/started",
+			"paramKeys": ["item", "threadId", "turnId", "startedAtMs"],
+			"itemType": "agentMessage"
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "turn/moderationMetadata",
+			"paramKeys": ["threadId", "turnId", "metadata"]
+		},
+		{
+			"direction": "server",
+			"method": "item/completed",
+			"paramKeys": ["item", "threadId", "turnId", "completedAtMs"],
+			"itemType": "agentMessage"
+		},
+		{
+			"direction": "server",
+			"method": "thread/tokenUsage/updated",
+			"paramKeys": ["threadId", "turnId", "tokenUsage"]
+		},
+		{
+			"direction": "server",
+			"method": "account/rateLimits/updated",
+			"paramKeys": ["rateLimits"]
+		},
+		{
+			"direction": "server",
+			"method": "thread/status/changed",
+			"paramKeys": ["threadId", "status"]
+		},
+		{
+			"direction": "server",
+			"method": "turn/completed",
+			"paramKeys": ["threadId", "turn"],
+			"turnStatus": "completed"
+		},
+		{
+			"direction": "client",
+			"id": 7,
+			"method": "turn/start",
+			"paramKeys": ["threadId", "input", "sandboxPolicy", "approvalPolicy", "approvalsReviewer"]
+		},
+		{
+			"direction": "server",
+			"id": 7,
+			"resultKeys": ["turn"],
+			"turnStatus": "inProgress"
+		},
+		{
+			"direction": "server",
+			"method": "thread/status/changed",
+			"paramKeys": ["threadId", "status"]
+		},
+		{
+			"direction": "server",
+			"method": "turn/started",
+			"paramKeys": ["threadId", "turn"],
+			"turnStatus": "inProgress"
+		},
+		{
+			"direction": "server",
+			"method": "item/started",
+			"paramKeys": ["item", "threadId", "turnId", "startedAtMs"],
+			"itemType": "userMessage"
+		},
+		{
+			"direction": "server",
+			"method": "item/completed",
+			"paramKeys": ["item", "threadId", "turnId", "completedAtMs"],
+			"itemType": "userMessage"
+		},
+		{
+			"direction": "server",
+			"method": "item/started",
+			"paramKeys": ["item", "threadId", "turnId", "startedAtMs"],
+			"itemType": "agentMessage"
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "turn/moderationMetadata",
+			"paramKeys": ["threadId", "turnId", "metadata"]
+		},
+		{
+			"direction": "server",
+			"method": "item/completed",
+			"paramKeys": ["item", "threadId", "turnId", "completedAtMs"],
+			"itemType": "agentMessage"
+		},
+		{
+			"direction": "server",
+			"method": "thread/tokenUsage/updated",
+			"paramKeys": ["threadId", "turnId", "tokenUsage"]
+		},
+		{
+			"direction": "server",
+			"method": "account/rateLimits/updated",
+			"paramKeys": ["rateLimits"]
+		},
+		{
+			"direction": "server",
+			"method": "thread/status/changed",
+			"paramKeys": ["threadId", "status"]
+		},
+		{
+			"direction": "server",
+			"method": "turn/completed",
+			"paramKeys": ["threadId", "turn"],
+			"turnStatus": "completed"
+		},
+		{
+			"direction": "client",
+			"id": 8,
+			"method": "turn/start",
+			"paramKeys": ["threadId", "input", "sandboxPolicy", "approvalPolicy", "approvalsReviewer"]
+		},
+		{
+			"direction": "server",
+			"id": 8,
+			"resultKeys": ["turn"],
+			"turnStatus": "inProgress"
+		},
+		{
+			"direction": "server",
+			"method": "thread/status/changed",
+			"paramKeys": ["threadId", "status"]
+		},
+		{
+			"direction": "server",
+			"method": "turn/started",
+			"paramKeys": ["threadId", "turn"],
+			"turnStatus": "inProgress"
+		},
+		{
+			"direction": "server",
+			"method": "item/started",
+			"paramKeys": ["item", "threadId", "turnId", "startedAtMs"],
+			"itemType": "userMessage"
+		},
+		{
+			"direction": "server",
+			"method": "item/completed",
+			"paramKeys": ["item", "threadId", "turnId", "completedAtMs"],
+			"itemType": "userMessage"
+		},
+		{
+			"direction": "server",
+			"method": "item/started",
+			"paramKeys": ["item", "threadId", "turnId", "startedAtMs"],
+			"itemType": "agentMessage"
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/completed",
+			"paramKeys": ["item", "threadId", "turnId", "completedAtMs"],
+			"itemType": "agentMessage"
+		},
+		{
+			"direction": "server",
+			"method": "turn/moderationMetadata",
+			"paramKeys": ["threadId", "turnId", "metadata"]
+		},
+		{
+			"direction": "server",
+			"method": "thread/status/changed",
+			"paramKeys": ["threadId", "status"]
+		},
+		{
+			"direction": "server",
+			"method": "item/started",
+			"paramKeys": ["item", "threadId", "turnId", "startedAtMs"],
+			"itemType": "commandExecution"
+		},
+		{
+			"direction": "server",
+			"id": 0,
+			"method": "item/commandExecution/requestApproval",
+			"paramKeys": [
+				"kind",
+				"threadId",
+				"turnId",
+				"itemId",
+				"startedAtMs",
+				"environmentId",
+				"reason",
+				"command",
+				"cwd",
+				"commandActions",
+				"proposedExecpolicyAmendment",
+				"availableDecisions"
+			]
+		},
+		{
+			"direction": "client",
+			"id": 0,
+			"resultKeys": ["decision"]
+		},
+		{
+			"direction": "server",
+			"method": "serverRequest/resolved",
+			"paramKeys": ["threadId", "requestId"]
+		},
+		{
+			"direction": "server",
+			"method": "thread/status/changed",
+			"paramKeys": ["threadId", "status"]
+		},
+		{
+			"direction": "server",
+			"method": "item/completed",
+			"paramKeys": ["item", "threadId", "turnId", "completedAtMs"],
+			"itemType": "commandExecution"
+		},
+		{
+			"direction": "server",
+			"method": "thread/tokenUsage/updated",
+			"paramKeys": ["threadId", "turnId", "tokenUsage"]
+		},
+		{
+			"direction": "server",
+			"method": "account/rateLimits/updated",
+			"paramKeys": ["rateLimits"]
+		},
+		{
+			"direction": "server",
+			"method": "item/started",
+			"paramKeys": ["item", "threadId", "turnId", "startedAtMs"],
+			"itemType": "agentMessage"
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "item/agentMessage/delta",
+			"paramKeys": ["threadId", "turnId", "itemId", "delta"]
+		},
+		{
+			"direction": "server",
+			"method": "turn/moderationMetadata",
+			"paramKeys": ["threadId", "turnId", "metadata"]
+		},
+		{
+			"direction": "server",
+			"method": "item/completed",
+			"paramKeys": ["item", "threadId", "turnId", "completedAtMs"],
+			"itemType": "agentMessage"
+		},
+		{
+			"direction": "server",
+			"method": "thread/tokenUsage/updated",
+			"paramKeys": ["threadId", "turnId", "tokenUsage"]
+		},
+		{
+			"direction": "server",
+			"method": "account/rateLimits/updated",
+			"paramKeys": ["rateLimits"]
+		},
+		{
+			"direction": "server",
+			"method": "thread/status/changed",
+			"paramKeys": ["threadId", "status"]
+		},
+		{
+			"direction": "server",
+			"method": "turn/completed",
+			"paramKeys": ["threadId", "turn"],
+			"turnStatus": "completed"
+		},
+		{
+			"direction": "client",
+			"id": 9,
+			"method": "turn/start",
+			"paramKeys": ["threadId", "input", "sandboxPolicy", "approvalPolicy", "approvalsReviewer"]
+		},
+		{
+			"direction": "server",
+			"id": 9,
+			"resultKeys": ["turn"],
+			"turnStatus": "inProgress"
+		},
+		{
+			"direction": "client",
+			"id": 10,
+			"method": "turn/interrupt",
+			"paramKeys": ["threadId", "turnId"]
+		},
+		{
+			"direction": "server",
+			"method": "thread/status/changed",
+			"paramKeys": ["threadId", "status"]
+		},
+		{
+			"direction": "server",
+			"method": "turn/started",
+			"paramKeys": ["threadId", "turn"],
+			"turnStatus": "inProgress"
+		},
+		{
+			"direction": "server",
+			"method": "item/started",
+			"paramKeys": ["item", "threadId", "turnId", "startedAtMs"],
+			"itemType": "userMessage"
+		},
+		{
+			"direction": "server",
+			"method": "item/completed",
+			"paramKeys": ["item", "threadId", "turnId", "completedAtMs"],
+			"itemType": "userMessage"
+		},
+		{
+			"direction": "server",
+			"id": 10,
+			"resultKeys": []
+		},
+		{
+			"direction": "server",
+			"method": "thread/status/changed",
+			"paramKeys": ["threadId", "status"]
+		},
+		{
+			"direction": "server",
+			"method": "turn/completed",
+			"paramKeys": ["threadId", "turn"],
+			"turnStatus": "interrupted"
+		}
+	]
+}

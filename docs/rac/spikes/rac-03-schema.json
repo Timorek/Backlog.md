@@ -1,0 +1,345 @@
+{
+	"codexVersion": "0.162.1",
+	"evidenceKind": "generated_local_schema_not_model_execution",
+	"schemas": {
+		"ToolRequestUserInputParams.json": {
+			"sha256": "fda15b62e7446105b59c8ed85c908abed2a47db70653e57c92c47a2f204fa77a",
+			"properties": ["autoResolutionMs", "isBlocking", "itemId", "questions", "threadId", "turnId"],
+			"required": ["isBlocking", "itemId", "questions", "threadId", "turnId"]
+		},
+		"ToolRequestUserInputResponse.json": {
+			"sha256": "5073b245f741fa8ce62ec52e4dd1809b7831f9c4284c279a78abc9b171f8e3f2",
+			"properties": ["answers"],
+			"required": ["answers"]
+		},
+		"CommandExecutionRequestApprovalParams.json": {
+			"sha256": "16a71816c2d66e319c2c4aa83dd636dfdc43c61e72b6d5475e421ce08d8e6558",
+			"properties": [
+				"approvalId",
+				"command",
+				"commandActions",
+				"cwd",
+				"environmentId",
+				"itemId",
+				"kind",
+				"networkApprovalContext",
+				"proposedExecpolicyAmendment",
+				"proposedNetworkPolicyAmendments",
+				"reason",
+				"startedAtMs",
+				"threadId",
+				"turnId"
+			],
+			"required": ["itemId", "startedAtMs", "threadId", "turnId"]
+		},
+		"PermissionsRequestApprovalResponse.json": {
+			"sha256": "23f3f24e9dbf35db3e0b85703f0d934da5a1cff3cbb611fba8bcd41f3b4a04b0",
+			"properties": ["permissions", "scope", "strictAutoReview"],
+			"required": ["permissions"]
+		},
+		"v2/ThreadStartParams.json": {
+			"sha256": "e9c6d3cc18d049bfbc0249add3808fb8e5a27e1a0b5a423767aafbc3859a9428",
+			"properties": [
+				"approvalPolicy",
+				"approvalsReviewer",
+				"baseInstructions",
+				"config",
+				"cwd",
+				"developerInstructions",
+				"ephemeral",
+				"model",
+				"modelProvider",
+				"personality",
+				"sandbox",
+				"serviceName",
+				"serviceTier",
+				"sessionStartSource",
+				"threadSource"
+			],
+			"required": []
+		},
+		"v2/ThreadStartResponse.json": {
+			"sha256": "7247cd531d3f78174444f8262fd3090d5acf8ab74084547b4e0a831d74e77c9a",
+			"properties": [
+				"approvalPolicy",
+				"approvalsReviewer",
+				"cwd",
+				"disabledPluginIds",
+				"instructionSources",
+				"model",
+				"modelProvider",
+				"reasoningEffort",
+				"sandbox",
+				"serviceTier",
+				"thread"
+			],
+			"required": ["approvalPolicy", "approvalsReviewer", "cwd", "model", "modelProvider", "sandbox", "thread"]
+		},
+		"v2/ThreadResumeParams.json": {
+			"sha256": "948779cace55dda4384689a1627cd6675aa4782744bb5820cca16bfc0118586c",
+			"properties": [
+				"approvalPolicy",
+				"approvalsReviewer",
+				"baseInstructions",
+				"config",
+				"cwd",
+				"developerInstructions",
+				"excludeTurns",
+				"model",
+				"modelProvider",
+				"personality",
+				"sandbox",
+				"serviceTier",
+				"threadId"
+			],
+			"required": ["threadId"]
+		},
+		"v2/ThreadResumeResponse.json": {
+			"sha256": "3f19a9c3a9891526685b0f61ce781098ddd65bfa2aed8c24ba4722fef10e08fe",
+			"properties": [
+				"approvalPolicy",
+				"approvalsReviewer",
+				"collaborationMode",
+				"cwd",
+				"disabledPluginIds",
+				"instructionSources",
+				"itemsBackwardsCursor",
+				"model",
+				"modelProvider",
+				"reasoningEffort",
+				"sandbox",
+				"serviceTier",
+				"thread",
+				"turnsBackwardsCursor"
+			],
+			"required": ["approvalPolicy", "approvalsReviewer", "cwd", "model", "modelProvider", "sandbox", "thread"]
+		},
+		"v2/TurnStartParams.json": {
+			"sha256": "583aff13e7a2da43fbb0150e0edc3c73171f374f0aa745dddba256166988a005",
+			"properties": [
+				"approvalPolicy",
+				"approvalsReviewer",
+				"clientUserMessageId",
+				"cwd",
+				"disabledPluginIds",
+				"effort",
+				"input",
+				"model",
+				"outputSchema",
+				"parentTurnId",
+				"personality",
+				"rootTurnId",
+				"sandboxPolicy",
+				"serviceTier",
+				"serviceTierForTurn",
+				"summary",
+				"threadId",
+				"toolOutput",
+				"turnTrigger"
+			],
+			"required": ["input", "threadId"],
+			"sandboxPolicy": {
+				"oneOf": [
+					{
+						"properties": {
+							"type": {
+								"enum": ["dangerFullAccess"],
+								"title": "DangerFullAccessSandboxPolicyType",
+								"type": "string"
+							}
+						},
+						"required": ["type"],
+						"title": "DangerFullAccessSandboxPolicy",
+						"type": "object"
+					},
+					{
+						"properties": {
+							"networkAccess": {
+								"default": false,
+								"type": "boolean"
+							},
+							"type": {
+								"enum": ["readOnly"],
+								"title": "ReadOnlySandboxPolicyType",
+								"type": "string"
+							}
+						},
+						"required": ["type"],
+						"title": "ReadOnlySandboxPolicy",
+						"type": "object"
+					},
+					{
+						"properties": {
+							"networkAccess": {
+								"allOf": [
+									{
+										"$ref": "#/definitions/NetworkAccess"
+									}
+								],
+								"default": "restricted"
+							},
+							"type": {
+								"enum": ["externalSandbox"],
+								"title": "ExternalSandboxSandboxPolicyType",
+								"type": "string"
+							}
+						},
+						"required": ["type"],
+						"title": "ExternalSandboxSandboxPolicy",
+						"type": "object"
+					},
+					{
+						"properties": {
+							"excludeSlashTmp": {
+								"default": false,
+								"type": "boolean"
+							},
+							"excludeTmpdirEnvVar": {
+								"default": false,
+								"type": "boolean"
+							},
+							"networkAccess": {
+								"default": false,
+								"type": "boolean"
+							},
+							"type": {
+								"enum": ["workspaceWrite"],
+								"title": "WorkspaceWriteSandboxPolicyType",
+								"type": "string"
+							},
+							"writableRoots": {
+								"default": [],
+								"items": {
+									"$ref": "#/definitions/AbsolutePathBuf"
+								},
+								"type": "array"
+							}
+						},
+						"required": ["type"],
+						"title": "WorkspaceWriteSandboxPolicy",
+						"type": "object"
+					}
+				]
+			}
+		},
+		"v2/TurnStartResponse.json": {
+			"sha256": "20e837d07826b9c01578ff40b962ab08f58a355a9984e96226733498514e9bad",
+			"properties": ["turn"],
+			"required": ["turn"]
+		},
+		"v2/TurnSteerParams.json": {
+			"sha256": "857e7a2b061ae46ed6aedea6a5fddd3a6ce14f0334bf7eafaf10d4cbe68ec78b",
+			"properties": ["clientUserMessageId", "expectedTurnId", "input", "threadId"],
+			"required": ["expectedTurnId", "input", "threadId"]
+		},
+		"ServerRequest.json": {
+			"sha256": "f339be472737a0003efa25fba2e6e6c9237e621cd065b6d6995c51256e9dc1fb",
+			"properties": [],
+			"required": [],
+			"methods": [
+				"item/commandExecution/requestApproval",
+				"item/fileChange/requestApproval",
+				"item/tool/requestUserInput",
+				"mcpServer/elicitation/request",
+				"item/permissions/requestApproval",
+				"item/tool/call",
+				"account/chatgptAuthTokens/refresh",
+				"attestation/generate",
+				"applyPatchApproval",
+				"execCommandApproval"
+			]
+		}
+	},
+	"experimentalSchemas": {
+		"CommandExecutionRequestApprovalParams.json": {
+			"sha256": "c9728280b8f3204fd729d0fb3d1ca7bb05b1150de26b3653f7163e6a9bd941e7",
+			"properties": [
+				"additionalPermissions",
+				"approvalId",
+				"availableDecisions",
+				"command",
+				"commandActions",
+				"cwd",
+				"environmentId",
+				"itemId",
+				"kind",
+				"networkApprovalContext",
+				"proposedExecpolicyAmendment",
+				"proposedNetworkPolicyAmendments",
+				"reason",
+				"startedAtMs",
+				"threadId",
+				"turnId"
+			]
+		},
+		"v2/TurnStartParams.json": {
+			"sha256": "062373a7dfc290b506e591bc5c2a35005211df27b3c60358cee3efed12859062",
+			"properties": [
+				"additionalContext",
+				"approvalPolicy",
+				"approvalsReviewer",
+				"clientUserMessageId",
+				"collaborationMode",
+				"cwd",
+				"cyberAccessProgram",
+				"disabledPluginIds",
+				"effort",
+				"environments",
+				"input",
+				"model",
+				"multiAgentMode",
+				"outputSchema",
+				"parentTurnId",
+				"permissions",
+				"personality",
+				"responsesapiClientMetadata",
+				"rootTurnId",
+				"runtimeWorkspaceRoots",
+				"sandboxPolicy",
+				"serviceTier",
+				"serviceTierForTurn",
+				"summary",
+				"threadId",
+				"toolOutput",
+				"turnTrigger"
+			]
+		},
+		"v2/ThreadStartParams.json": {
+			"sha256": "80a40a7fac15b4bf70efb7f893fb353acc0a0d30c68f54aee4f01923deca85de",
+			"properties": [
+				"allowProviderModelFallback",
+				"approvalPolicy",
+				"approvalsReviewer",
+				"baseInstructions",
+				"config",
+				"cwd",
+				"daybreakEnabled",
+				"developerInstructions",
+				"dynamicTools",
+				"environments",
+				"ephemeral",
+				"experimentalRawEvents",
+				"historyMode",
+				"mockExperimentalField",
+				"model",
+				"modelProvider",
+				"multiAgentMode",
+				"permissions",
+				"personality",
+				"projectId",
+				"runtimeWorkspaceRoots",
+				"sandbox",
+				"selectedCapabilityRoots",
+				"serviceName",
+				"serviceTier",
+				"sessionStartSource",
+				"threadSource"
+			]
+		},
+		"v2/TurnStartResponse.json": {
+			"sha256": "20e837d07826b9c01578ff40b962ab08f58a355a9984e96226733498514e9bad",
+			"properties": ["turn"]
+		}
+	},
+	"experimentalSchemaCommand": "codex app-server generate-json-schema --experimental --out <directory>"
+}

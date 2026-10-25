@@ -1,0 +1,27 @@
+{
+	"baseline": {
+		"opened": false,
+		"error": "WebSocket connection to 'ws://127.0.0.1:52361/' failed: Expected 101 status code: 200"
+	},
+	"upgradeFirst": {
+		"opened": true
+	},
+	"records": [
+		{
+			"variant": "baseline",
+			"url": "http://127.0.0.1:52361/",
+			"host": "127.0.0.1:52361",
+			"origin": "http://127.0.0.1:52361",
+			"upgrade": "websocket",
+			"status": 200
+		},
+		{
+			"variant": "upgrade-first",
+			"url": "http://127.0.0.1:52361/",
+			"host": "127.0.0.1:52361",
+			"origin": "http://127.0.0.1:52361",
+			"upgrade": "websocket",
+			"status": 101
+		}
+	]
+}

@@ -1,0 +1,18 @@
+{
+	"kind": "rac06-real-adapter",
+	"platform": "darwin",
+	"initialize": true,
+	"threadPolicy": true,
+	"liveRequested": true,
+	"modelTurn": "completed",
+	"error": "rpc_error",
+	"diagnostics": {
+		"permissionDenied": false,
+		"authenticationFailed": false
+	},
+	"shutdown": {
+		"exitedOnEof": true,
+		"forced": false,
+		"groupStopped": true
+	}
+}

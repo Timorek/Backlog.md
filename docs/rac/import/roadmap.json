@@ -1,0 +1,490 @@
+{
+	"name": "Backlog.md Remote Agent Control",
+	"version": 2,
+	"generated": "2026-10-24",
+	"tasks": [
+		{
+			"key": "RAC-01",
+			"title": "[RAC-01] Audyt Backlog.md i przygotowanie forka",
+			"phase": "M0 - Discovery",
+			"description": "Załóż fork Backlog.md i gałąź feature/remote-agent-control. Zidentyfikuj framework, routing web UI, backend, mechanizm przechowywania tasków, testy i system konfiguracji. Rozwój i testy wykonuj na macOS; nie zakładaj, że docelowy runner musi działać na tym samym hoście. NIE zmieniaj zachowania istniejącego Kanbana. Zapisz mapę modułów, punktów rozszerzeń i aktualne komendy uruchamiania na Macu.",
+			"acceptanceCriteria": [
+				"Fork uruchamia obecny dashboard lokalnie na macOS (Apple Silicon lub Intel, zgodnie z posiadanym Maciem)",
+				"Repozytorium ma przechodzące testy bazowe lub udokumentowane istniejące błędy",
+				"Dokument audytu wskazuje konkretne pliki rozszerzeń dla API i UI",
+				"Opisany jest sposób aktualizowania forka z upstream"
+			],
+			"dependencies": [],
+			"priority": "high",
+			"labels": ["rac", "m0-discovery", "discovery", "mvp", "macos"],
+			"implementationPlan": "1. Przeczytaj AGENTS.md i aktualne instrukcje Backlog.md.\n2. Zweryfikuj kod forka i aktualną wersję Codexa na macOS.\n3. Zapisz wyniki/spike/ADR bez implementowania kolejnych tasków.\n4. Przedstaw ustalenia i plan do zaakceptowania."
+		},
+		{
+			"key": "RAC-02",
+			"title": "[RAC-02] ADR: architektura RAC i granice zaufania",
+			"phase": "M0 - Discovery",
+			"description": "Zaprojektuj adapter Codex, serwis sesji, API, strumień zdarzeń, persistence, interfejs Kanban i granice dostępu. Backlog CLI/API pozostaje źródłem prawdy o taskach; dane uruchomień i zdarzeń są osobno. Development i testy początkowe na macOS, a uruchomienie runnera możliwe na macOS albo Windows po wyborze hosta docelowego. MVP single-user na jednym allowlistowanym katalogu projektu i lokalnym runnerze; zdefiniuj granicę API na przyszłe oddzielenie hosta.",
+			"acceptanceCriteria": [
+				"Powstał diagram komponentów i przepływu danych",
+				"Opisane API oraz model Run/Session/Interaction/Event",
+				"Decyzja określa gdzie przechowywać dane uruchomień i jak migrować schemat",
+				"Wskazano ryzyka prompt injection oraz skutki uruchamiania procesu na PC",
+				"Dokument opisuje co jest poza MVP",
+				"ADR rozdziela hosta developerskiego od docelowego runnera i opisuje strategię macOS/Windows"
+			],
+			"dependencies": ["RAC-01"],
+			"priority": "high",
+			"labels": ["rac", "m0-discovery", "architecture", "mvp", "macos"],
+			"implementationPlan": "1. Przeczytaj AGENTS.md i aktualne instrukcje Backlog.md.\n2. Zweryfikuj kod forka i aktualną wersję Codexa na macOS.\n3. Zapisz wyniki/spike/ADR bez implementowania kolejnych tasków.\n4. Przedstaw ustalenia i plan do zaakceptowania."
+		},
+		{
+			"key": "RAC-03",
+			"title": "[RAC-03] Spike: Codex app-server i pytania do użytkownika",
+			"phase": "M0 - Discovery",
+			"description": "Na macOS sprawdź rzeczywistą wersję Codex CLI i JSON-RPC app-server. Zademonstruj initialize, thread/start, turn/start, event streaming, turn/interrupt, approval i tool/requestUserInput (o ile dostępne). Rozróżnij deklarowany protokół od faktycznej dostępności pytań w używanym trybie/modelu Codexa. Jeśli aktywny tryb nie emituje requestUserInput, zaprojektuj fallback: ustrukturyzowane pytanie + koniec tury + następna tura z odpowiedzią. Uruchamiaj lokalnie przez stdio bez publicznego listenera.",
+			"acceptanceCriteria": [
+				"Działa testowe uruchomienie app-server na macOS",
+				"Powstał zapisany przykładowy przebieg thread/turn/event",
+				"Sprawdzono zachowanie requestUserInput i approval na używanym koncie i modelu",
+				"Udokumentowano fallback dla pytań tekstowych oraz ograniczenia aktywnej tury",
+				"Nie użyto trybu bypass approvals ani pełnego dostępu jako domyślnego"
+			],
+			"dependencies": ["RAC-01", "RAC-02"],
+			"priority": "high",
+			"labels": ["rac", "m0-discovery", "codex", "spike", "mvp", "macos"],
+			"implementationPlan": "1. Przeczytaj AGENTS.md i aktualne instrukcje Backlog.md.\n2. Zweryfikuj kod forka i aktualną wersję Codexa na macOS.\n3. Zapisz wyniki/spike/ADR bez implementowania kolejnych tasków.\n4. Przedstaw ustalenia i plan do zaakceptowania."
+		},
+		{
+			"key": "RAC-04",
+			"title": "[RAC-04] Kontrakt stanów i testowy szkielet RAC",
+			"phase": "M0 - Discovery",
+			"description": "Zdefiniuj stany queued/running/waiting_for_input/waiting_for_approval/completed/failed/cancelled/unknown. Oddziel status taska Backlog.md od statusu konkretnego uruchomienia: jeden task może mieć wiele runów. Postaw testy jednostkowe kontraktów i atrapę adaptera umożliwiającą testowanie UI bez prawdziwego Codexa.",
+			"acceptanceCriteria": [
+				"Zapisano dozwolone przejścia stanów i przypadki błędne",
+				"Testy sprawdzają idempotentne zmiany statusu i mapowanie task -> run",
+				"Mock agent umie emitować tekst pytanie approval sukces i błąd",
+				"Restart aplikacji nie jest modelowany jako sukces uruchomienia"
+			],
+			"dependencies": ["RAC-02", "RAC-03"],
+			"priority": "high",
+			"labels": ["rac", "m0-discovery", "domain", "tests", "mvp"],
+			"implementationPlan": "1. Sprawdz aktualny kod i kontrakty Backlog.md oraz Codex.\n2. Napisz testy dla wymagan.\n3. Zaimplementuj minimalny zakres zgodny z architektura.\n4. Uruchom testy i zanotuj wynik w zadaniu."
+		},
+		{
+			"key": "RAC-05",
+			"title": "[RAC-05] Rejestr projektów i allowlista workspace",
+			"phase": "M1 - Local MVP",
+			"description": "Dodaj konfigurację katalogów repozytoriów dostępnych agentowi. W MVP obsłuż jeden projekt; przygotuj abstrakcję na kolejne. Ścieżek nie wolno podawać bezpośrednio z requestu WWW. Backend wybiera katalog wyłącznie z konfiguracji allowlisty. Odrzuć path traversal i linki wychodzące poza root.",
+			"acceptanceCriteria": [
+				"Backend odczytuje jedną skonfigurowaną ścieżkę projektu",
+				"Walidacja blokuje nieznany projectId oraz wyjście poza katalog",
+				"Backend nigdy nie używa ścieżki z payloadu żądania jako cwd",
+				"Testy obejmują nieprawidłowe i względne ścieżki"
+			],
+			"dependencies": ["RAC-02", "RAC-04"],
+			"priority": "high",
+			"labels": ["rac", "m1-local-mvp", "backend", "security", "mvp"],
+			"implementationPlan": "1. Sprawdz aktualny kod i kontrakty Backlog.md oraz Codex.\n2. Napisz testy dla wymagan.\n3. Zaimplementuj minimalny zakres zgodny z architektura.\n4. Uruchom testy i zanotuj wynik w zadaniu."
+		},
+		{
+			"key": "RAC-06",
+			"title": "[RAC-06] Adapter i lifecycle procesu Codex app-server",
+			"phase": "M1 - Local MVP",
+			"description": "Zaimplementuj adapter ze wsparciem startThread, startTurn, steerOrContinue, interrupt, respondToRequest, subscribe. Na macOS uruchamiaj codex app-server jako child process w Node.js (spawn z tablicą argumentów, bez shell:true). Zaimplementuj handshake, timeouty, obsługę stdout/stderr, restart, sprzątanie procesu oraz rozwiązywanie ścieżki do Codex CLI bez polegania na interaktywnym PATH. Kod adaptera powinien pozostać wieloplatformowy; nie publikuj app-server w internecie.",
+			"acceptanceCriteria": [
+				"Adapter uruchamia app-server i kończy proces po shutdown",
+				"JSON-RPC requests i responses korelują po id",
+				"Rozłączenie i crash procesu są wykrywane",
+				"stdout zdarzeń nie jest traktowane jako polecenia shella",
+				"Testy adaptera używają mock transport",
+				"Spawn i zamykanie procesu testowane na macOS; ścieżka binarki działa przy uruchomieniu z launchd"
+			],
+			"dependencies": ["RAC-03", "RAC-04", "RAC-05"],
+			"priority": "high",
+			"labels": ["rac", "m1-local-mvp", "backend", "codex", "mvp", "macos"],
+			"implementationPlan": "1. Sprawdz aktualny kod i kontrakty Backlog.md oraz Codex.\n2. Napisz testy dla wymagan.\n3. Zaimplementuj minimalny zakres zgodny z architektura.\n4. Uruchom testy i zanotuj wynik w zadaniu."
+		},
+		{
+			"key": "RAC-07",
+			"title": "[RAC-07] Persistence Run oraz Session mapping",
+			"phase": "M1 - Local MVP",
+			"description": "Zaimplementuj lokalny magazyn metadanych uruchomień i zdarzeń (np. SQLite lub sprawdzone mechanizmy repo). Dane: runId, taskId, projectId, threadId, turnId, status, timestamps, sanitized errors, pending request IDs. Backlog taski zostają w Markdown. Dodaj migracje i indeksy.",
+			"acceptanceCriteria": [
+				"Uruchomienie mapuje się do jednego taska i jednej sesji Codex",
+				"Historia uruchomień przetrwa restart backendu",
+				"Migracje są powtarzalne i testowane",
+				"Nie zapisuje się tokenów ani sekretów w logach",
+				"Odczyt historii działa po taskId"
+			],
+			"dependencies": ["RAC-04", "RAC-05"],
+			"priority": "high",
+			"labels": ["rac", "m1-local-mvp", "persistence", "backend", "mvp"],
+			"implementationPlan": "1. Sprawdz aktualny kod i kontrakty Backlog.md oraz Codex.\n2. Napisz testy dla wymagan.\n3. Zaimplementuj minimalny zakres zgodny z architektura.\n4. Uruchom testy i zanotuj wynik w zadaniu."
+		},
+		{
+			"key": "RAC-08",
+			"title": "[RAC-08] API: uruchom task z dashboardu",
+			"phase": "M1 - Local MVP",
+			"description": "Dodaj POST /api/rac/runs z taskId i projectId. Backend pobiera treść taska poprzez istniejący moduł Backlog/CLI zamiast ufać treści przesłanej z przeglądarki. Uruchamia sesję Codexa w allowlistowanym repo, przekazuje opis, AC i instrukcje weryfikacji. Na start tylko jedna aktywna sesja i jawny status queued, jeśli zasób zajęty.",
+			"acceptanceCriteria": [
+				"Poprawny task uruchamia Codexa w zadanym repo",
+				"Nieznany task zwraca kontrolowany błąd bez startu procesu",
+				"Dwukrotne kliknięcie z tym samym idempotency key nie tworzy 2 runów",
+				"Task description nie jest interpretowany jako komenda systemowa",
+				"W API nie można przekazać niestandardowych argumentów CLI"
+			],
+			"dependencies": ["RAC-05", "RAC-06", "RAC-07"],
+			"priority": "high",
+			"labels": ["rac", "m1-local-mvp", "backend", "api", "mvp"],
+			"implementationPlan": "1. Sprawdz aktualny kod i kontrakty Backlog.md oraz Codex.\n2. Napisz testy dla wymagan.\n3. Zaimplementuj minimalny zakres zgodny z architektura.\n4. Uruchom testy i zanotuj wynik w zadaniu."
+		},
+		{
+			"key": "RAC-09",
+			"title": "[RAC-09] Stream zdarzeń oraz historia logów",
+			"phase": "M1 - Local MVP",
+			"description": "Dodaj SSE lub WebSocket do strumieniowania znormalizowanych zdarzeń: agent message, command progress, tool activity, errors, turn completion. Trwałe zapisywanie historii oraz paginacja. Stosuj filtr danych wrażliwych, limity objętości, kontrolę dostępu i numery sekwencyjne do odtwarzania po reconnect.",
+			"acceptanceCriteria": [
+				"Działa strumień z monotonicznym event ID",
+				"Po odświeżeniu UI widać historię bez utraty porządku",
+				"Po utracie połączenia klient nadrabia brakujące zdarzenia",
+				"W payloadach nie ujawnia się sekretów środowiska",
+				"Duży log nie zawiesza dashboardu"
+			],
+			"dependencies": ["RAC-06", "RAC-07", "RAC-08"],
+			"priority": "high",
+			"labels": ["rac", "m1-local-mvp", "events", "api", "mvp"],
+			"implementationPlan": "1. Sprawdz aktualny kod i kontrakty Backlog.md oraz Codex.\n2. Napisz testy dla wymagan.\n3. Zaimplementuj minimalny zakres zgodny z architektura.\n4. Uruchom testy i zanotuj wynik w zadaniu."
+		},
+		{
+			"key": "RAC-10",
+			"title": "[RAC-10] Lifecycle: cancel i odzyskiwanie po awarii",
+			"phase": "M1 - Local MVP",
+			"description": "Dodaj POST cancel dla aktywnego runu z użyciem turn/interrupt, potwierdź zatrzymanie po zdarzeniu z serwera. Przy ponownym uruchomieniu backendu odczytaj dane runów; odróżnij możliwość thread/resume od utraconej aktywnej tury. Nie pokazuj niezweryfikowanego stanu running. Domyślne recovered run=unknown/requires_review.",
+			"acceptanceCriteria": [
+				"Przycisk cancel zatrzymuje aktywną turę i status jest poprawny",
+				"Drugi cancel nie wywołuje niekontrolowanego błędu",
+				"Crash procesu przełącza run w unknown lub failed z opisem",
+				"Restart backendu nie tworzy podwójnego uruchomienia",
+				"Testy obejmują brak odpowiedzi app-server"
+			],
+			"dependencies": ["RAC-07", "RAC-08", "RAC-09"],
+			"priority": "high",
+			"labels": ["rac", "m1-local-mvp", "lifecycle", "mvp"],
+			"implementationPlan": "1. Sprawdz aktualny kod i kontrakty Backlog.md oraz Codex.\n2. Napisz testy dla wymagan.\n3. Zaimplementuj minimalny zakres zgodny z architektura.\n4. Uruchom testy i zanotuj wynik w zadaniu."
+		},
+		{
+			"key": "RAC-11",
+			"title": "[RAC-11] UI: Run agent przy kartach i szczegółach tasków",
+			"phase": "M2 - Dashboard",
+			"description": "Do istniejącej tablicy dodaj akcję Run agent na karcie i w widoku taska. Pokaż projekt roboczy, aktualną aktywność, ostrzeżenie o lokalnym uruchomieniu kodu i potwierdzenie. Zablokuj wielokrotne starty z tego samego UI. Nie modyfikuj semantyki kolumn Kanban.",
+			"acceptanceCriteria": [
+				"Akcja widoczna na desktop i mobile",
+				"Kliknięcie start tworzy dokładnie jedno uruchomienie",
+				"Wyświetlane są stany queued/running/failed/completed",
+				"Widać komunikaty API oraz brak połączenia z hostem runnera",
+				"Widok istniejącej tablicy zachowuje dotychczasowe funkcje"
+			],
+			"dependencies": ["RAC-08", "RAC-09"],
+			"priority": "high",
+			"labels": ["rac", "m2-dashboard", "frontend", "mvp"],
+			"implementationPlan": "1. Sprawdz aktualny kod i kontrakty Backlog.md oraz Codex.\n2. Napisz testy dla wymagan.\n3. Zaimplementuj minimalny zakres zgodny z architektura.\n4. Uruchom testy i zanotuj wynik w zadaniu."
+		},
+		{
+			"key": "RAC-12",
+			"title": "[RAC-12] UI: widok Run detail i live logs",
+			"phase": "M2 - Dashboard",
+			"description": "Dodaj panel szczegółów uruchomienia z osią zdarzeń, logami, statusem i akcją Stop. Pozwól przechodzić z taska do historii runów. Ukryj dane wrażliwe, escape HTML i obsługuj przewijanie długich logów.",
+			"acceptanceCriteria": [
+				"Panel pokazuje bieżące i poprzednie runy taska",
+				"Logi aktualizują się bez refresh i bez duplikatów",
+				"Stop ma wymagane potwierdzenie i stan loading",
+				"Widok nadaje się do telefonu 360px szerokości",
+				"Niesprawny streaming przechodzi w stan reconnect"
+			],
+			"dependencies": ["RAC-09", "RAC-10", "RAC-11"],
+			"priority": "high",
+			"labels": ["rac", "m2-dashboard", "frontend", "mvp"],
+			"implementationPlan": "1. Sprawdz aktualny kod i kontrakty Backlog.md oraz Codex.\n2. Napisz testy dla wymagan.\n3. Zaimplementuj minimalny zakres zgodny z architektura.\n4. Uruchom testy i zanotuj wynik w zadaniu."
+		},
+		{
+			"key": "RAC-13",
+			"title": "[RAC-13] Model Pending Interaction i wykrywanie pytań",
+			"phase": "M2 - Dashboard",
+			"description": "Przechwytuj server-initiated requests requestUserInput i requestApproval. Każdą interakcję przechowuj po requestId, threadId, turnId, typ, opcje, termin ważności, status. Dla ogólnych pytań biznesowych zadziałaj zgodnie z wynikiem spike RAC-03: requestUserInput gdy obsługiwany lub jawne zatrzymanie po structured agent message i kontynuacja w następnej turze.",
+			"acceptanceCriteria": [
+				"Question tworzy pozycję waiting_for_input i widoczną treść",
+				"Approval tworzy osobną pozycję waiting_for_approval",
+				"Stare lub już rozwiązane requesty nie mogą być ponownie zatwierdzone",
+				"Fallback pytań nie udaje aktywnego requestu app-server",
+				"Przejścia stanów i eventy mają testy"
+			],
+			"dependencies": ["RAC-03", "RAC-07", "RAC-09", "RAC-10"],
+			"priority": "high",
+			"labels": ["rac", "m2-dashboard", "backend", "interaction", "mvp"],
+			"implementationPlan": "1. Sprawdz aktualny kod i kontrakty Backlog.md oraz Codex.\n2. Napisz testy dla wymagan.\n3. Zaimplementuj minimalny zakres zgodny z architektura.\n4. Uruchom testy i zanotuj wynik w zadaniu."
+		},
+		{
+			"key": "RAC-14",
+			"title": "[RAC-14] API: odpowiedzi na pytania i kontynuacja sesji",
+			"phase": "M2 - Dashboard",
+			"description": "Dodaj POST /api/rac/interactions/{id}/answer. Zweryfikuj uprawnienia użytkownika i przynależność do runu; odpowiedz na trwający request właściwą metodą JSON-RPC albo uruchom następną turę w tym samym threadId dla fallbacku. Wprowadź idempotencję oraz obsługę timeoutu i request resolved.",
+			"acceptanceCriteria": [
+				"Odpowiedź dociera do właściwego wątku Codexa",
+				"Agent może kontynuować bez tworzenia nowego taska",
+				"Dwie równoczesne odpowiedzi nie rozwiązują requestu dwukrotnie",
+				"Odpowiedź na wygasłe pytanie zwraca czytelny konflikt",
+				"Pytania i odpowiedzi zapisują historię z datą"
+			],
+			"dependencies": ["RAC-13"],
+			"priority": "high",
+			"labels": ["rac", "m2-dashboard", "backend", "interaction", "mvp"],
+			"implementationPlan": "1. Sprawdz aktualny kod i kontrakty Backlog.md oraz Codex.\n2. Napisz testy dla wymagan.\n3. Zaimplementuj minimalny zakres zgodny z architektura.\n4. Uruchom testy i zanotuj wynik w zadaniu."
+		},
+		{
+			"key": "RAC-15",
+			"title": "[RAC-15] UI: pytania agenta i rozmowa w tasku",
+			"phase": "M2 - Dashboard",
+			"description": "W widoku taska dodaj sekcję Agent Conversation: tekst pytania, opcje wyboru / pole tekstowe, przycisk Send, informację o stanie sesji i historię decyzji. Wskazuj czy agent realnie czeka na request czy oczekuje na kolejną turę. Zapobiegaj podwójnym odpowiedziom.",
+			"acceptanceCriteria": [
+				"Pytania są czytelne i możliwe do obsłużenia na telefonie",
+				"Zapis odpowiedzi aktualizuje widok bez przeładowania",
+				"Obsługiwane są odpowiedzi tekstowe i wybór opcji",
+				"Widać historię wiadomości po odświeżeniu",
+				"Ekran rozróżnia waiting i running"
+			],
+			"dependencies": ["RAC-12", "RAC-13", "RAC-14"],
+			"priority": "high",
+			"labels": ["rac", "m2-dashboard", "frontend", "interaction", "mvp"],
+			"implementationPlan": "1. Sprawdz aktualny kod i kontrakty Backlog.md oraz Codex.\n2. Napisz testy dla wymagan.\n3. Zaimplementuj minimalny zakres zgodny z architektura.\n4. Uruchom testy i zanotuj wynik w zadaniu."
+		},
+		{
+			"key": "RAC-16",
+			"title": "[RAC-16] UI i API: aprobaty operacji Codexa",
+			"phase": "M2 - Dashboard",
+			"description": "Obsłuż requestApproval dla komend, zmian plików i uprawnień w oparciu o schema app-server. Wyświetl polecenie, cwd, zakres zmian i powód. Zapewnij Approve once / Reject / Cancel, bez automatycznego blanket approve. Zmiana dozwolonych uprawnień musi być jawna i ograniczona.",
+			"acceptanceCriteria": [
+				"Użytkownik widzi co zatwierdza zanim kliknie Approve",
+				"Reject odsyła poprawną decyzję do app-server",
+				"Nie pokazuje opcji niedozwolonych w availableDecisions",
+				"Po wygaśnięciu requestu przyciski są nieaktywne",
+				"Domyślna polityka nie pomija zgód"
+			],
+			"dependencies": ["RAC-13", "RAC-14", "RAC-15"],
+			"priority": "high",
+			"labels": ["rac", "m2-dashboard", "security", "frontend", "interaction", "mvp"],
+			"implementationPlan": "1. Sprawdz aktualny kod i kontrakty Backlog.md oraz Codex.\n2. Napisz testy dla wymagan.\n3. Zaimplementuj minimalny zakres zgodny z architektura.\n4. Uruchom testy i zanotuj wynik w zadaniu."
+		},
+		{
+			"key": "RAC-17",
+			"title": "[RAC-17] End-to-end: pełny task z pytaniem i zgodą",
+			"phase": "M2 - Dashboard",
+			"description": "Test scenariusza od Run agent przez zadane pytanie, odpowiedź z dashboardu, approval, wykonanie testów, kompletowanie i odświeżenie strony. Wykorzystaj stuba JSON-RPC i osobny test manualny z prawdziwym Codexem. Oznacz ograniczenia trybów bez interaktywnego requestUserInput.",
+			"acceptanceCriteria": [
+				"E2E przechodzi w mock/stub bez internetu",
+				"Manual smoke test dokumentuje przebieg na macOS",
+				"Pytanie i approval nie mieszają się ze sobą",
+				"Refresh nie gubi pending interaction",
+				"Agent ma oznaczony końcowy wynik i historię"
+			],
+			"dependencies": ["RAC-11", "RAC-12", "RAC-15", "RAC-16"],
+			"priority": "high",
+			"labels": ["rac", "m2-dashboard", "e2e", "qa", "mvp", "macos"],
+			"implementationPlan": "1. Sprawdz aktualny kod i kontrakty Backlog.md oraz Codex.\n2. Napisz testy dla wymagan.\n3. Zaimplementuj minimalny zakres zgodny z architektura.\n4. Uruchom testy i zanotuj wynik w zadaniu."
+		},
+		{
+			"key": "RAC-18",
+			"title": "[RAC-18] Autoryzacja aplikacji i zabezpieczenie API",
+			"phase": "M3 - Remote Access",
+			"description": "Dodaj warstwę autoryzacji backendu dla wszystkich endpointów RAC: polityka single-user, obsługa zaufanej tożsamości z reverse proxy z walidacją tokenu/headerów, CSRF dla mutacji, secure cookies jeśli stosowane, ograniczenie origin, rate limiting, audyt. Nie akceptuj niezweryfikowanych nagłówków tożsamości od klienta; odrzuć ruch spoza zaufanego proxy. Wybierz i udokumentuj konkretny model sesji.",
+			"acceptanceCriteria": [
+				"Nieautoryzowany klient nie uruchomi agenta ani nie zobaczy logów",
+				"API mutujące blokuje CSRF i nieprawidłowe origin",
+				"Zaufanie do tożsamości z Access jest weryfikowane po stronie serwera",
+				"Rate limit ogranicza próby i spam requestami",
+				"Testy obejmują brak i podrobione uwierzytelnienie"
+			],
+			"dependencies": ["RAC-02", "RAC-08", "RAC-14", "RAC-16"],
+			"priority": "high",
+			"labels": ["rac", "m3-remote-access", "security", "remote"],
+			"implementationPlan": "1. Sprawdz aktualny kod i kontrakty Backlog.md oraz Codex.\n2. Napisz testy dla wymagan.\n3. Zaimplementuj minimalny zakres zgodny z architektura.\n4. Uruchom testy i zanotuj wynik w zadaniu."
+		},
+		{
+			"key": "RAC-19",
+			"title": "[RAC-19] Cloudflare Tunnel + Access bez otwartych portów",
+			"phase": "M3 - Remote Access",
+			"description": "Uruchom Cloudflare Tunnel (cloudflared) na wybranym hoście usługowym, początkowo macOS, obok Backlog web UI. Wystaw jedynie frontend/backend HTTP przez Cloudflare Access z tożsamością single-user i MFA, bez app-server ani plików repo. Sprawdź, że aplikacja nasłuchuje wyłącznie na 127.0.0.1; tunnel inicjuje połączenie wychodzące. Zapisz instrukcję DNS, secret management, recovery i warunki darmowego planu. Gdy backend i runner są na osobnych komputerach, nie udostępniaj między nimi niezabezpieczonego kanału w internecie.",
+			"acceptanceCriteria": [
+				"Panel dostępny poza LAN po zalogowaniu",
+				"Brak przekierowanych portów na routerze",
+				"App-server i kanał kontroli agenta nie są publicznie routowane",
+				"Nieautoryzowane wejście zatrzymuje Cloudflare Access",
+				"Udokumentowano zależność od domeny i limitów planu"
+			],
+			"dependencies": ["RAC-18"],
+			"priority": "high",
+			"labels": ["rac", "m3-remote-access", "cloudflare", "remote", "macos"],
+			"implementationPlan": "1. Sprawdz aktualny kod i kontrakty Backlog.md oraz Codex.\n2. Napisz testy dla wymagan.\n3. Zaimplementuj minimalny zakres zgodny z architektura.\n4. Uruchom testy i zanotuj wynik w zadaniu."
+		},
+		{
+			"key": "RAC-20",
+			"title": "[RAC-20] macOS launchd: autostart, wake policy i healthchecks",
+			"phase": "M3 - Remote Access",
+			"description": "Skonfiguruj dla wybranego Maca uruchamianie backendu i cloudflared przez launchd (LaunchAgent użytkownika), logowanie stdout/stderr, backoff, health endpointy oraz status online/offline. Runner powinien działać bez uprawnień root. Uwzględnij różnicę między uruchomieniem po zalogowaniu a działaniem przed zalogowaniem, sleep/lid-close, App Nap, PATH w launchd, uprawnienia do katalogów i przerwy w dostępie do internetu. Jeżeli docelowy agent zostanie na Windows, wykonaj analogiczny adapter Task Scheduler jako osobny follow-up zamiast udawać, że launchd obsługuje Windows.",
+			"acceptanceCriteria": [
+				"Po zalogowaniu użytkownika macOS usługi uruchamiają się bez ręcznego terminala",
+				"Opisano ograniczenie LaunchAgent: nie gwarantuje pracy przed logowaniem użytkownika",
+				"Agent runner działa bez root/admin i bez interaktywnego terminala",
+				"Stan offline/online i logi są dostępne po restarcie oraz po utracie internetu",
+				"Dokumentacja określa zasady macOS sleep, zamkniętej klapy i stałej dostępności hosta",
+				"Konfiguracja PATH, kodów powrotu i restartów launchd jest przetestowana"
+			],
+			"dependencies": ["RAC-10", "RAC-18", "RAC-19"],
+			"priority": "medium",
+			"labels": ["rac", "m3-remote-access", "macos", "ops", "remote"],
+			"implementationPlan": "1. Sprawdz aktualny kod i kontrakty Backlog.md oraz Codex.\n2. Napisz testy dla wymagan.\n3. Zaimplementuj minimalny zakres zgodny z architektura.\n4. Uruchom testy i zanotuj wynik w zadaniu."
+		},
+		{
+			"key": "RAC-21",
+			"title": "[RAC-21] Test mobilny bezpieczeństwa i awarii sieci",
+			"phase": "M3 - Remote Access",
+			"description": "Na telefonie z sieci komórkowej wykonaj pełny przebieg: zaloguj się, wybierz task, Run, obejrzyj logi, odpowiedz na pytanie, approve/deny, odbierz wynik. Przetestuj wygaśnięcie Access session, reconnect SSE, restart backendu, offline PC i ponowne próby. Użyj E2E Playwright dla najważniejszych UI flows oraz checklisty manualnej.",
+			"acceptanceCriteria": [
+				"Przebieg z telefonu poza domowym Wi-Fi jest udokumentowany",
+				"Sesja po wygaśnięciu Access nie pozwala na mutacje",
+				"Po reconnect nie ma duplikacji wykonania zadania",
+				"Offline PC ma czytelny komunikat",
+				"Scenariusz negatywny odrzuca dostęp bez logowania",
+				"Test po uśpieniu/wybudzeniu Maca pokazuje prawidłowe statusy i reconnect"
+			],
+			"dependencies": ["RAC-17", "RAC-18", "RAC-19", "RAC-20"],
+			"priority": "high",
+			"labels": ["rac", "m3-remote-access", "qa", "mobile", "remote"],
+			"implementationPlan": "1. Sprawdz aktualny kod i kontrakty Backlog.md oraz Codex.\n2. Napisz testy dla wymagan.\n3. Zaimplementuj minimalny zakres zgodny z architektura.\n4. Uruchom testy i zanotuj wynik w zadaniu."
+		},
+		{
+			"key": "RAC-22",
+			"title": "[RAC-22] Izolacja zmian Git worktree per Run",
+			"phase": "M4 - Advanced",
+			"description": "Dla każdego runu twórz odizolowany git worktree i branch rac/<runId> zamiast współdzielenia jednego katalogu roboczego. Waliduj czysty stan wyjściowy, referencję do bazy oraz uprawnienia. Sprzątaj worktree po świadomym zatwierdzeniu albo przez bezpieczny mechanizm cleanup. Ogranicz rozmiary i liczbę worktree.",
+			"acceptanceCriteria": [
+				"Dwa runy nie modyfikują tego samego working tree",
+				"Zmiany pozostają dostępne do przeglądu po zakończeniu",
+				"Cleanup nie usuwa niezacommitowanych zmian bez potwierdzenia",
+				"Błędne repo/branch nie uruchamia agenta",
+				"Testy obejmują konflikt branch i porzucony worktree"
+			],
+			"dependencies": ["RAC-08", "RAC-10", "RAC-21"],
+			"priority": "medium",
+			"labels": ["rac", "m4-advanced", "git", "advanced"],
+			"implementationPlan": "1. Sprawdz aktualny kod i kontrakty Backlog.md oraz Codex.\n2. Napisz testy dla wymagan.\n3. Zaimplementuj minimalny zakres zgodny z architektura.\n4. Uruchom testy i zanotuj wynik w zadaniu."
+		},
+		{
+			"key": "RAC-23",
+			"title": "[RAC-23] Kolejka i kontrolowana równoległość agentów",
+			"phase": "M4 - Advanced",
+			"description": "Dodaj kolejkę FIFO z maxConcurrency=1 domyślnie i możliwość zwiększenia limitu przy pracy w worktree. Zachowaj idempotency key, limity CPU/RAM, powtórzenia po kontrolowanej awarii (nigdy automatycznie po nieznanym wyniku). W UI pokaż kolejkę i możliwość anulowania oczekujących pozycji.",
+			"acceptanceCriteria": [
+				"Konfigurowalne maxConcurrency działa bez race condition",
+				"Każde zlecenie ma jednoznaczny runId",
+				"Queued run można anulować bez startu Codexa",
+				"System nie retryuje automatycznie runu w stanie unknown",
+				"Testy obciążeniowe potwierdzają limit uruchomień"
+			],
+			"dependencies": ["RAC-10", "RAC-22"],
+			"priority": "medium",
+			"labels": ["rac", "m4-advanced", "queue", "advanced"],
+			"implementationPlan": "1. Sprawdz aktualny kod i kontrakty Backlog.md oraz Codex.\n2. Napisz testy dla wymagan.\n3. Zaimplementuj minimalny zakres zgodny z architektura.\n4. Uruchom testy i zanotuj wynik w zadaniu."
+		},
+		{
+			"key": "RAC-24",
+			"title": "[RAC-24] Raport wykonania i przegląd zmian",
+			"phase": "M4 - Advanced",
+			"description": "Po każdej turze dodaj podsumowanie plików zmienionych, status testów, listę commitów/diffów i opis pozostałych ryzyk. Raport nie oznacza taska Done automatycznie; użytkownik zatwierdza rezultat. Zabezpiecz rendering diffów i limity wielkości. Po review możliwe przekazanie do ręcznego merge/PR.",
+			"acceptanceCriteria": [
+				"Z runu można przejść do diffu i test report",
+				"Status testów odróżnia passed/failed/not-run",
+				"Task nie przechodzi na Done bez decyzji użytkownika",
+				"Przegląd zmian jest bezpiecznie renderowany",
+				"Zmiany agenta nie nadpisują niezatwierdzonych zmian"
+			],
+			"dependencies": ["RAC-17", "RAC-22"],
+			"priority": "medium",
+			"labels": ["rac", "m4-advanced", "git", "review", "advanced"],
+			"implementationPlan": "1. Sprawdz aktualny kod i kontrakty Backlog.md oraz Codex.\n2. Napisz testy dla wymagan.\n3. Zaimplementuj minimalny zakres zgodny z architektura.\n4. Uruchom testy i zanotuj wynik w zadaniu."
+		},
+		{
+			"key": "RAC-25",
+			"title": "[RAC-25] Powiadomienia Telegram o pytaniach i wynikach",
+			"phase": "M4 - Advanced",
+			"description": "Dodaj opcjonalny notifier Telegram ze zdarzeniami waiting_for_input, approval, completed, failed, offline. Powiadomienie zawiera tytuł taska, status i deep link do dashboardu; żadnych sekretów, tokenów, pełnych promptów lub komend. Token bota przechowuj poza repo, obsłuż throttling i brak dostępu do Telegrama.",
+			"acceptanceCriteria": [
+				"Powiadomienie przychodzi dla wybranych zdarzeń",
+				"Nie wycieka token bota ani kod projektu",
+				"Link prowadzi do właściwego runu po zalogowaniu",
+				"Wyłączenie integracji nie blokuje agenta",
+				"Błędy API Telegram są logowane i retryowane z limitem"
+			],
+			"dependencies": ["RAC-13", "RAC-18", "RAC-21"],
+			"priority": "low",
+			"labels": ["rac", "m4-advanced", "notifications", "advanced"],
+			"implementationPlan": "1. Sprawdz aktualny kod i kontrakty Backlog.md oraz Codex.\n2. Napisz testy dla wymagan.\n3. Zaimplementuj minimalny zakres zgodny z architektura.\n4. Uruchom testy i zanotuj wynik w zadaniu."
+		},
+		{
+			"key": "RAC-26",
+			"title": "[RAC-26] Adapter wielu agentów - Claude Code opcjonalnie",
+			"phase": "M4 - Advanced",
+			"description": "Wyodrębnij agent-provider interface i dodaj drugą implementację dopiero po stabilnym MVP Codex. Zweryfikuj możliwości Claude Code Remote/CLI bez zakładania zgodności protokołów. Zachowaj wspólny model Run, statusy i interakcje z provider-specific payload. UI ma wybór agenta i jego zdolności.",
+			"acceptanceCriteria": [
+				"Codex adapter pozostaje zgodny wstecznie",
+				"Claude adapter ma osobne testy kontraktowe",
+				"Dashboard pokazuje tylko możliwości obsługiwane przez dany backend",
+				"Zmienna konfiguracji wyłącza Claude bez wpływu na Codex",
+				"Nie miesza się request IDs i uprawnień providerów"
+			],
+			"dependencies": ["RAC-17", "RAC-22", "RAC-23"],
+			"priority": "low",
+			"labels": ["rac", "m4-advanced", "multiagent", "advanced"],
+			"implementationPlan": "1. Sprawdz aktualny kod i kontrakty Backlog.md oraz Codex.\n2. Napisz testy dla wymagan.\n3. Zaimplementuj minimalny zakres zgodny z architektura.\n4. Uruchom testy i zanotuj wynik w zadaniu."
+		},
+		{
+			"key": "RAC-27",
+			"title": "[RAC-27] Hardening: security and reliability test suite",
+			"phase": "M5 - Release",
+			"description": "Wykonaj przegląd bezpieczeństwa aplikacji i tunelu: auth bypass, CSRF, malicious task text, prompt injection, command injection, path traversal, process leaks, resource abuse, logs, secrets, stale approvals. Testy jednostkowe, integracyjne i E2E. Przejdź checklistę sandbox / workspace-write / approval policies Codexa na macOS. Potwierdź zachowanie podczas sleep/wake i sprawdź ograniczenia uprawnień użytkownika.",
+			"acceptanceCriteria": [
+				"Przechodzą testy unit/integration/Playwright w CI",
+				"Negatywne testy blokują shell injection i traversal",
+				"Niezatwierdzone operacje nie są autoryzowane automatycznie",
+				"W logach testowych nie ma tokenów ani haseł",
+				"Dokument zawiera znane ryzyka i sposób ich ograniczania"
+			],
+			"dependencies": ["RAC-21", "RAC-22", "RAC-23", "RAC-24"],
+			"priority": "high",
+			"labels": ["rac", "m5-release", "qa", "security", "release", "macos"],
+			"implementationPlan": "1. Sprawdz aktualny kod i kontrakty Backlog.md oraz Codex.\n2. Napisz testy dla wymagan.\n3. Zaimplementuj minimalny zakres zgodny z architektura.\n4. Uruchom testy i zanotuj wynik w zadaniu."
+		},
+		{
+			"key": "RAC-28",
+			"title": "[RAC-28] Instrukcja instalacji i aktualizacji forka",
+			"phase": "M5 - Release",
+			"description": "Przygotuj dokumentację krok po kroku dla macOS: instalacja Node/Bun, git fork, build, codex auth, Backlog config, lokalne repo projektu, tunnel, Access, launchd, bezpieczeństwo, backup danych runów, troubleshooting, update upstream i rollback. Wyraźnie rozdziel development na Macu od uruchomienia runnera na wybranym hoście i dodaj sekcję deployment Windows jako wariant przyszły. Dodaj tutorial telefon -> start task -> pytanie -> odpowiedź -> review.",
+			"acceptanceCriteria": [
+				"Nowa instalacja działa według README bez domysłów",
+				"Opisano zależności i koszty domeny oraz ewentualne limity usług",
+				"Wskazano jak odzyskać dane po awarii dysku lub procesu",
+				"Udokumentowano aktualizację forka z upstream i rollback",
+				"Opisano ograniczenia MVP i kolejne kroki",
+				"Instrukcja uruchomienia na Macu zawiera launchd oraz politykę sleep/wake"
+			],
+			"dependencies": ["RAC-20", "RAC-21", "RAC-24", "RAC-27"],
+			"priority": "medium",
+			"labels": ["rac", "m5-release", "docs", "release", "macos"],
+			"implementationPlan": "1. Sprawdz aktualny kod i kontrakty Backlog.md oraz Codex.\n2. Napisz testy dla wymagan.\n3. Zaimplementuj minimalny zakres zgodny z architektura.\n4. Uruchom testy i zanotuj wynik w zadaniu."
+		}
+	],
+	"platform": {
+		"development": "macOS",
+		"localSmokeTest": "macOS",
+		"deployment": "macOS or Windows; choose at deployment; Windows service adapter optional"
+	}
+}
