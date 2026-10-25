@@ -40,9 +40,9 @@ The package script invokes `bun src/cli.ts`; `browser` constructs `BacklogServer
 NODE_ENV=development bun --watch src/cli.ts browser --no-open --port 6421
 ```
 
-The current server passes `development: process.env.NODE_ENV === "development"` to Bun. This selects Bun's development HTML handling; `--watch` restarts the process when server dependencies change. Task Markdown updates use the existing `ContentStore`/watchers and dashboard WebSocket, independently of source refresh. No Vite server or second frontend is needed.
+Since RAC-08, the server uses guarded HTML/asset handlers for the same frontend and disables native Bun development HMR: native HTMLBundle auto-routes bypass fallback request checks. `--watch` still restarts the process when backend dependencies change. Restart manually after frontend edits as well; do not assume frontend HMR. Task Markdown updates use the existing `ContentStore`/watchers and dashboard WebSocket, independently of source refresh. No Vite server or second frontend is needed.
 
-**Verification boundary:** live HTML HMR, backend restart behavior and rendered browser interaction remain to be checked outside this session's port restriction. Do not claim HMR verification based only on the development flag. If a backend restart loses the client socket, refresh the page and check reconnection before relying on it.
+**Verification boundary:** native frontend HMR is disabled after RAC-08. The user's live RAC-08 smoke verified protected HTTP and frontend assets; it did not verify backend watch/restart or narrow-screen rendering. If a backend restart loses the client socket, refresh the page and check reconnection before relying on it.
 
 ## RAC backlog
 
@@ -98,6 +98,11 @@ agent session cannot substitute for this system-dialog check in a normal Termina
 
 ### Checks
 
+RAC-08 local pairing, planning commands, API contracts and live smoke are described
+in [LOCAL-API.md](LOCAL-API.md). After starting the source dashboard, run
+`bun src/cli.ts rac pair`, open the returned URL and enter the one-use code.
+`rac start <taskId>` currently starts planning only; Run buttons arrive in RAC-11.
+
 RAC-07 storage checks use temporary external databases and need no Codex account:
 
 ```bash
@@ -143,7 +148,7 @@ Checklist:
 2. Open `BACK-790`; inspect description, plan, criteria and the dependency graph. Open `BACK-791` and verify it depends on `BACK-790`.
 3. Exercise a reversible description edit on `BACK-790`; save, verify via `bun run cli task view BACK-790 --plain`, then restore its original text through the UI.
 4. Exercise a reversible status edit on `BACK-790`; restore In Progress. Do not mark blocked future work Done to test a control.
-5. Update a task through CLI and confirm the open dashboard refreshes. Verify frontend source refresh and backend restart in the development command.
+5. Update a task through CLI and confirm the open dashboard refreshes. Verify backend watch/restart in the development command; restart manually after frontend edits.
 6. Check desktop and a narrow viewport, recording failures in RAC-01. Review pending task criteria before marking it Done.
 
 Do not expose this local dashboard publicly yet. RAC-18/19 must deliver verified authorization and network protection first; see ADR-0001 D7 (`decisions/0001-rac-architecture.md`).

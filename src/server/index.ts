@@ -11,6 +11,8 @@ import { loadTaskDetail } from "../core/task-detail.ts";
 import { isCreateLockError, isTaskLockError } from "../file-system/operations.ts";
 import { BacklogToolError } from "../mcp/errors/mcp-errors.ts";
 import { MilestoneHandlers } from "../mcp/tools/milestones/handlers.ts";
+import { LocalRacAccess, readOwnerDescriptor } from "../rac/local-access.ts";
+import { AgentManager } from "../rac/manager.ts";
 import { type RacOwner, type RacSession, validateRacContext } from "../rac/project-context.ts";
 import { loadRacSettings } from "../rac/project-settings.ts";
 import {
@@ -39,6 +41,9 @@ import { formatValidStatuses, getCanonicalStatuses, getValidStatuses } from "../
 import { isValidTaskId } from "../utils/task-id.ts";
 import { isAmbiguousTaskIdError, LOCAL_TASK_LOOKUP_HINT, taskNotFoundMessage } from "../utils/task-path.ts";
 import { getVersion } from "../utils/version.ts";
+import { dashboardResponses } from "./dashboard-bundle.ts";
+import { checkLocalRequest, localError } from "./local-policy.ts";
+import { RacHttp } from "./rac-http.ts";
 
 // Regex pattern to match any prefix (letters followed by dash)
 const PREFIX_PATTERN = /^[a-zA-Z]+-/i;
@@ -251,6 +256,8 @@ export async function findNextAvailablePort(startPort: number, maxPort = MAX_POR
 export class BacklogServer {
 	private core: Core;
 	private readonly racDataRoot?: string;
+	private readonly racConnect?: (root: string) => Promise<import("../rac/codex-adapter.ts").CodexAdapter>;
+	private racHttp?: RacHttp;
 	private server: Server<unknown> | null = null;
 	private runtimeWorkingDirectory: string | null = null;
 	private projectName = "Untitled Project";
@@ -265,9 +272,16 @@ export class BacklogServer {
 	private pendingDataBroadcastScope: "tasks" | "milestones" = "tasks";
 	private storeReadyBroadcasted = false;
 
-	constructor(projectPath: string, options: { racDataRoot?: string } = {}) {
+	constructor(
+		projectPath: string,
+		options: {
+			racDataRoot?: string;
+			racConnect?: (root: string) => Promise<import("../rac/codex-adapter.ts").CodexAdapter>;
+		} = {},
+	) {
 		this.core = new Core(projectPath, { enableWatchers: true });
 		this.racDataRoot = options.racDataRoot;
+		this.racConnect = options.racConnect;
 	}
 
 	// Callers must supply authenticated server-side session and lock-backed owner records, never request JSON.
@@ -411,10 +425,11 @@ export class BacklogServer {
 		const shouldOpenBrowser = openBrowser && (config?.autoOpenBrowser ?? true);
 
 		try {
+			const dashboard = await dashboardResponses(spaIndexHtml);
 			const serveOptions = {
 				port: finalPort,
 				hostname: BROWSER_HOST,
-				development: process.env.NODE_ENV === "development",
+				development: false,
 				routes: {
 					"/": spaIndexHtml,
 					"/tasks": spaIndexHtml,
@@ -546,7 +561,11 @@ export class BacklogServer {
 					},
 				},
 				fetch: async (req: Request, server: Server<unknown>) => {
-					const res = await this.handleRequest(req, server);
+					const res = await this.guardIncoming(
+						req,
+						finalPort,
+						async () => (await this.racHttp?.handle(req)) ?? (await this.handleRequest(req, server)),
+					);
 
 					// Disable caching for GET/HEAD so browser always fetches latest content
 					if (req.method === "GET" || req.method === "HEAD") {
@@ -573,6 +592,20 @@ export class BacklogServer {
 				},
 				/* biome-ignore format: keep cast on single line below for type narrowing */
 			};
+			const routes = serveOptions.routes as Record<string, unknown>;
+			for (const [path, route] of Object.entries(routes)) {
+				if (route === spaIndexHtml)
+					routes[path] = (request: Request) => this.guardIncoming(request, finalPort, () => dashboard.index.clone());
+				else if (route && typeof route === "object") {
+					for (const [method, handler] of Object.entries(route)) {
+						if (typeof handler === "function")
+							(route as Record<string, unknown>)[method] = (request: Request) =>
+								this.guardIncoming(request, finalPort, () => handler(request));
+					}
+				}
+			}
+			for (const [path, response] of dashboard.assets)
+				routes[path] = (request: Request) => this.guardIncoming(request, finalPort, () => response.clone());
 			const bundleAssetDirectory = process.env[BUNDLE_ASSET_DIR_ENV]?.trim();
 			if (bundleAssetDirectory) {
 				this.runtimeWorkingDirectory = process.cwd();
@@ -585,7 +618,32 @@ export class BacklogServer {
 				this.restoreRuntimeWorkingDirectory();
 				throw error;
 			}
-			const url = `http://${BROWSER_HOST}:${finalPort}`;
+			const url = `http://${BROWSER_HOST}:${this.server.port}`;
+			let manager: AgentManager | undefined;
+			try {
+				if ((await loadRacSettings(this.core.filesystem.rootDir, this.racDataRoot)).enabled) {
+					manager = await AgentManager.open(this.core.filesystem.rootDir, {
+						core: this.core,
+						dataRoot: this.racDataRoot,
+						connect: this.racConnect,
+					});
+					const ownedManager = manager;
+					const access = new LocalRacAccess(manager.store.owner, Date.now, (value) =>
+						ownedManager.store.registerRedactionSecret(value),
+					);
+					manager.store.assertOwnership();
+					await access.publish(`${url}/`, this.racDataRoot);
+					this.racHttp = new RacHttp(manager, access);
+					console.log("RAC owner ready. Pair this dashboard with: backlog rac pair");
+				}
+			} catch {
+				await manager?.close();
+				console.warn("RAC is unavailable in this instance; ordinary Backlog remains available.");
+				try {
+					const owner = await readOwnerDescriptor(this.core.filesystem.rootDir, this.racDataRoot);
+					console.warn(`RAC owner address: ${owner.url}`);
+				} catch {}
+			}
 			console.log(`🚀 Backlog.md browser interface running at ${url}`);
 			console.log(`📊 Project: ${this.projectName}`);
 			const stopKey = process.platform === "darwin" ? "Cmd+C" : "Ctrl+C";
@@ -624,6 +682,8 @@ export class BacklogServer {
 		if (this.taskBroadcastTimer) clearTimeout(this.taskBroadcastTimer);
 		if (this._stopping) return;
 		this._stopping = true;
+		await this.racHttp?.close();
+		this.racHttp = undefined;
 
 		// Stop filesystem watcher first to reduce churn
 		try {
@@ -719,6 +779,22 @@ export class BacklogServer {
 		} catch (error) {
 			console.error("Error serving asset:", error);
 			return new Response("Internal Server Error", { status: 500 });
+		}
+	}
+
+	private async guardIncoming(
+		req: Request,
+		port: number,
+		action: () => Response | Promise<Response>,
+	): Promise<Response> {
+		try {
+			checkLocalRequest(req, this.server?.port ?? port);
+			if (this._stopping) return Response.json({ error: "Server is stopping" }, { status: 503 });
+			const response = await action();
+			if (req.method === "GET" || req.method === "HEAD") applyNoStoreHeaders(response.headers);
+			return response;
+		} catch (error) {
+			return localError(error);
 		}
 	}
 

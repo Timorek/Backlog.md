@@ -226,6 +226,14 @@ Dostęp z internetu jest wyłączony do RAC-18/19 i testów negatywnych. Tunel (
 
 Nie ufamy niezweryfikowanym nagłówkom reverse proxy. Sekrety gateway, Codexa i powiadomień pozostają w bezpiecznej konfiguracji użytkownika/OS. Ochrona CSRF obejmuje także mutacje, a sesję/Origin weryfikujemy przy upgrade WebSocket i otwarciu streamu. UI pokazuje zakres każdej zgody, a backend sprawdza, czy nadal odpowiada otwartej prośbie. Nigdy nie wystawiamy publicznie stdio/RPC providera ani ogólnego API wykonywania poleceń. Własne kanały zdalne Codexa (daemon, remote control, `ws://`) są osobną ścieżką wykonania: na hoście RAC muszą być wyłączone albo osobno ocenione (RAC-19). Powiadomienia (RAC-25) niosą minimalne metadane i link; odpowiedź na powiadomienie nigdy nie rozstrzyga zgody bez równoważnego uwierzytelnienia.
 
+**Uzupełnienie wykonawcze RAC-08 (2026-10-25):** użytkownik zaakceptował jednorazowe
+parowanie: `rac pair` wydaje krótki kod, wymieniany w lokalnym dashboardzie na sesję
+projektu. Kod wygasa po 2 minutach i 5 próbach; sesja wygasa po 8 godzinach lub
+restarcie właściciela. CLI start/status używa prywatnego deskryptora i nagłówków;
+mutacje sesji cookie wymagają CSRF. Nie wymaga to hasła konta przy każdym starcie.
+To nie jest izolacja poświadczeń decyzji ani autoryzacja dostępu z internetu.
+Szczegóły, dowody i ograniczenia: [LOCAL-API.md](../LOCAL-API.md).
+
 ## D8. Host developerski, docelowy runner i granica przyszłej rozbudowy
 
 macOS jest środowiskiem developmentu i pierwszych lokalnych testów. Docelowy runner może działać na macOS albo Windows dopiero po wyborze hosta i walidacji. W MVP backend, SQLite i Codex działają na jednym hoście; nie wysyłamy cwd Maca na inny komputer. Na Windows trzeba przetestować ścieżki/ACL, uruchomienie binarki, sandbox, zarządzanie drzewem procesów, SQLite i mechanizm usługi. Dopóki te testy nie przejdą, dokumentujemy Windows jako projektowaną możliwość, a nie wspierane wdrożenie.

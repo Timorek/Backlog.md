@@ -68,3 +68,13 @@ Session, run, interaction and event records survive restart; uncertain runs reta
 the active slot. The future manager must hold the store for its lifetime, stop on
 fencing and authenticate human resolution. This module adds no execution route,
 discovery descriptor or dashboard feature.
+
+## RAC-08 local execution boundary
+
+[LOCAL-API.md](LOCAL-API.md) records the user-approved one-use pairing workflow,
+private owner discovery, project-bound cookie/CSRF and CLI start/status through the
+same owner API. Shared loopback controls wrap the existing native routes, frontend
+bundle/assets and fallback/stream upgrades. Guarded bundle serving replaces native
+HTML auto-routes; native HMR is disabled. Only planning is available; implementation
+continuation, answers, approvals and public exposure remain later delivery gates.
+The user's live Terminal smoke succeeded on 2026-10-25; the exact result is retained.

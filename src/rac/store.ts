@@ -86,7 +86,7 @@ export class RacStore {
 		private readonly db: Database,
 		readonly path: string,
 		owner: RacOwner,
-		private readonly secrets: readonly string[],
+		private readonly secrets: string[],
 		limits: StoreLimits,
 		private readonly now: () => number,
 	) {
@@ -248,6 +248,15 @@ export class RacStore {
 			throw new RacStoreError("owner_lost", "RAC store ownership was lost; writes and starts are fenced", 503, true);
 		}
 	}
+	registerRedactionSecret(value: string): void {
+		this.assertOwnership();
+		if (!value || value.length > 16_384) invalid("Invalid RAC redaction secret");
+		if (this.secrets.includes(value)) return;
+		if (this.secrets.length >= 128)
+			throw new RacStoreError("secret_limit", "Restart RAC to renew local credentials", 503);
+		this.secrets.push(value);
+	}
+
 	private write<T>(action: () => T): T {
 		this.assertOwnership();
 		this.depth++;
