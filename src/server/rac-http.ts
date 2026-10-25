@@ -59,6 +59,15 @@ export class RacHttp {
 				const result = await this.manager.start(await readLocalJson(request), request.headers.get("idempotency-key"));
 				return respond({ result: result.result, replayed: result.replayed }, 202);
 			}
+			const resolve = url.pathname.match(/^\/api\/rac\/runs\/([A-Za-z0-9._:-]+)\/resolve$/);
+			if (resolve?.[1] && request.method === "POST")
+				return respond(
+					await this.manager.resolve(
+						resolve[1],
+						await readLocalJson(request, 256),
+						request.headers.get("idempotency-key"),
+					),
+				);
 			const run = url.pathname.match(/^\/api\/rac\/runs\/([A-Za-z0-9._:-]+)$/);
 			if (run?.[1] && request.method === "GET") return respond(await this.manager.status(run[1]));
 			const task = url.pathname.match(/^\/api\/rac\/tasks\/([A-Za-z0-9.-]+)\/runs$/);

@@ -2,11 +2,12 @@ import { createHash, randomUUID } from "node:crypto";
 import { readFile, realpath } from "node:fs/promises";
 import { Core } from "../core/backlog.ts";
 import { loadTaskDetail } from "../core/task-detail.ts";
+import { isGitRepository } from "../git/operations.ts";
 import { parseTask } from "../markdown/parser.ts";
 import { LocalRequestError } from "../server/local-policy.ts";
 import { canonicalTaskId, isValidTaskId } from "../utils/task-id.ts";
-import { CodexAdapter } from "./codex-adapter.ts";
-import { type CodexProtocolEvent, rpcRecord } from "./codex-rpc.ts";
+import { CODEX_PROTOCOL_VERSION, CodexAdapter } from "./codex-adapter.ts";
+import { CodexError, type CodexProtocolEvent, rpcRecord } from "./codex-rpc.ts";
 import { resolveRacWorkspacePath } from "./project-context.ts";
 import { loadRacSettings } from "./project-settings.ts";
 import { isTerminalRunStatus } from "./run-state.ts";
@@ -32,6 +33,7 @@ export class AgentManager {
 	private active?: Active;
 	private stopping = false;
 	private launching?: Promise<void>;
+	private launchingRun?: Active;
 	private readonly heartbeat: ReturnType<typeof setInterval>;
 	private constructor(
 		readonly store: RacStore,
@@ -73,6 +75,10 @@ export class AgentManager {
 		if (!settings.enabled || settings.projectKey !== this.store.owner.projectKey)
 			throw new LocalRequestError("rac_disabled", "RAC is disabled", 503);
 	}
+	private async taskId(input: string): Promise<string> {
+		if (!isValidTaskId(input)) throw new LocalRequestError("invalid_task", "Invalid task ID", 400);
+		return canonicalTaskId(input, (await this.core.filesystem.loadConfig())?.prefixes?.task ?? "task");
+	}
 	private async snapshot(taskId: string, actionable = false): Promise<Snapshot> {
 		if (!isValidTaskId(taskId)) throw new LocalRequestError("invalid_task", "Invalid task ID", 400);
 		let task: Awaited<ReturnType<Core["filesystem"]["loadTask"]>>;
@@ -95,7 +101,8 @@ export class AgentManager {
 			if (!detail.readiness.isReady)
 				throw new LocalRequestError("task_not_ready", "Task is finished or has unresolved dependencies", 409);
 			try {
-				await this.core.git.assertNoCommitOperationInProgress(this.store.owner.canonicalRoot);
+				if (await isGitRepository(this.store.owner.canonicalRoot))
+					await this.core.git.assertNoCommitOperationInProgress(this.store.owner.canonicalRoot);
 			} catch {
 				throw new LocalRequestError("git_operation_active", "Finish the active Git operation before starting RAC", 409);
 			}
@@ -107,8 +114,9 @@ export class AgentManager {
 			raw,
 		};
 	}
-	async taskHistory(taskId: string) {
+	async taskHistory(input: string) {
 		await this.authorize();
+		const taskId = await this.taskId(input);
 		let revision: string | null = null;
 		try {
 			revision = (await this.snapshot(taskId)).revision;
@@ -133,7 +141,7 @@ export class AgentManager {
 				"Provide only taskId, expectedTaskRevision and Idempotency-Key",
 				400,
 			);
-		const taskId = canonicalTaskId(body.taskId);
+		const taskId = await this.taskId(body.taskId);
 		const request = { taskId, expectedTaskRevision: body.expectedTaskRevision };
 		const pending = new RacStoreError("reservation_pending", "RAC reservation needs task validation", 409);
 		try {
@@ -149,7 +157,7 @@ export class AgentManager {
 			throw new LocalRequestError("task_revision_conflict", "Task changed; reload and review before starting", 409);
 		let reserved: string | undefined;
 		const receipt = this.store.idempotent("start", taskId, key, request, () => {
-			const session = this.store.createSession({ protocolVersion: "0.162.1" });
+			const session = this.store.createSession({ protocolVersion: CODEX_PROTOCOL_VERSION });
 			const run = this.store.reserveRun({
 				taskId,
 				taskCreatedAt: snapshot.taskCreatedAt,
@@ -162,15 +170,39 @@ export class AgentManager {
 		if (reserved) {
 			const active: Active = { id: reserved };
 			this.active = active;
-			this.launching = this.launch(active, snapshot).catch(async () => {
-				await this.stopActive("failed", active);
-			});
+			this.launchingRun = active;
+			this.launching = this.launch(active, snapshot)
+				.catch(async (error) => {
+					await this.stopActive(
+						error instanceof CodexError && error.code === "cleanup_unverified" ? "unknown" : "failed",
+						active,
+					);
+				})
+				.finally(() => {
+					if (this.launchingRun === active) this.launchingRun = undefined;
+				});
 		}
 		return { result: receipt.value, replayed: receipt.replayed };
 	}
 	async status(id: string) {
 		await this.authorize();
 		return { run: this.store.getRun(id), phase: "planning", implementationAvailable: false };
+	}
+	async resolve(id: string, body: Record<string, unknown>, key: string | null) {
+		await this.authorize();
+		if (Object.keys(body).length !== 1 || body.previousProcessStopped !== true || !key || Buffer.byteLength(key) > 512)
+			throw new LocalRequestError(
+				"stop_confirmation_required",
+				"Confirm the previous process stopped and provide Idempotency-Key",
+				400,
+			);
+		const receipt = this.store.idempotent("resolve", id, key, body, () => {
+			if (this.active || this.launchingRun)
+				throw new RacStoreError("cleanup_pending", "Wait for owned process cleanup before resolving history", 409);
+			const run = this.store.resolveRun(id, true);
+			return { runId: run.id, status: run.status };
+		});
+		return { result: receipt.value, replayed: receipt.replayed };
 	}
 	private async launch(active: Active, snapshot: Snapshot): Promise<void> {
 		await this.authorize();
@@ -181,7 +213,8 @@ export class AgentManager {
 		const adapter = await this.connect(this.store.owner.canonicalRoot);
 		active.adapter = adapter;
 		if (this.stopping || this.active !== active) {
-			await adapter.close();
+			if (this.active === active) await this.stopActive("interrupted", active);
+			else await adapter.close();
 			return;
 		}
 		active.unsubscribe = adapter.subscribe((event) => {
@@ -189,7 +222,8 @@ export class AgentManager {
 		});
 		const threadId = await adapter.startThread({ instructions: PLANNING_RULES });
 		if (this.active !== active || active.finishing || this.stopping) {
-			await adapter.close();
+			if (this.active === active) await this.stopActive("interrupted", active);
+			else await adapter.close();
 			return;
 		}
 		active.threadId = threadId;
@@ -226,9 +260,20 @@ export class AgentManager {
 				if (
 					event.method === "item/commandExecution/requestApproval" ||
 					event.method === "item/fileChange/requestApproval"
-				)
-					answer = { decision: "decline" };
-				else if (event.method === "item/permissions/requestApproval") answer = { permissions: {} };
+				) {
+					const available = event.params.availableDecisions;
+					const decision =
+						available === undefined
+							? "decline"
+							: Array.isArray(available)
+								? ["decline", "cancel"].find((value) => available.includes(value))
+								: undefined;
+					if (!decision) {
+						void this.stopActive("interrupted", active);
+						return;
+					}
+					answer = { decision };
+				} else if (event.method === "item/permissions/requestApproval") answer = { permissions: {} };
 				else if (event.method === "mcpServer/elicitation/request") answer = { action: "decline" };
 				else {
 					void this.stopActive("interrupted", active);
@@ -272,7 +317,12 @@ export class AgentManager {
 			active.unsubscribe?.();
 			try {
 				const shutdown = await active.adapter?.close();
-				const final = shutdown && !shutdown.groupStopped ? "unknown" : status;
+				const final =
+					shutdown && !shutdown.groupStopped
+						? "unknown"
+						: shutdown?.groupStopped && status === "unknown"
+							? "interrupted"
+							: status;
 				const run = this.store.getRun(active.id);
 				if (!isTerminalRunStatus(run.status) && run.status !== "unknown")
 					this.store.setRunStatus(active.id, final, final === "failed" ? "provider_error" : undefined);

@@ -3,7 +3,7 @@
 RAC-08 connects the existing Bun backend, Core, SQLite store and Codex adapter.
 It adds local pairing and planning runs through the canonical CLI and the same
 HTTP API. It does not add Run buttons, implementation continuation, answer/decide,
-SSE, cancel/resume or public access. Those belong to the later roadmap tasks.
+SSE, cancel/resume or public access. An explicit human resolve command is available for uncertain history. Those belong to the later roadmap tasks.
 
 ## Start and pair
 
@@ -74,7 +74,7 @@ endpoint. Questions requiring an answer stop the planning run; approvals are
 declined without granting permissions. Final sanitized agent messages and state
 are stored; command-log streaming is deferred to RAC-09. The planning timeout is
 five minutes. Shutdown/fencing closes the adapter before releasing SQLite;
-unverified cleanup or unexpected disconnect becomes unknown.
+unverified cleanup becomes unknown. A disconnect, startup timeout or disable with verified owned-group cleanup becomes interrupted, without pretending the task completed.
 
 This is a workflow gate with one planning turn, developer instructions and absent
 continuation commands. The verified workspace-write sandbox still allows project
@@ -83,6 +83,20 @@ a model can only edit the plan. Task/repository text remains untrusted, and prom
 instructions are not a security boundary. The separate human interaction protocol
 and its isolation checks remain required before implementation continuation.
 Run completion does not complete the task.
+
+After a crash or unverified cleanup, inspect the previous process and confirm it
+has stopped before explicitly resolving the run:
+
+```bash
+bun src/cli.ts rac resolve <runId> --confirm-process-stopped --idempotency-key resolution-1
+```
+
+This requires the enabled authenticated owner and a stable key. It never kills
+or identifies a process from an untrusted PID and never resumes execution. The
+flag is a human assertion, not automatic proof. A live owned process or pending
+startup/cleanup blocks resolution. An unknown run becomes abandoned; a terminal
+run can retire stale pending interactions while keeping its original outcome.
+Cancel/resume and interaction answers/decisions remain later delivery gates.
 
 ## Current HTTP surface
 
@@ -93,6 +107,7 @@ Run completion does not complete the task.
 | `POST /api/rac/session` | `{ code }`; exchange code for project cookie and CSRF value. |
 | `GET /api/rac/session` | Authenticated browser CSRF bootstrap, no mutation. |
 | `POST /api/rac/runs` | Only `{ taskId, expectedTaskRevision }` and `Idempotency-Key`; 202 reservation. |
+| `POST /api/rac/runs/:id/resolve` | Only `{ previousProcessStopped: true }` and `Idempotency-Key`; authenticated human resolution. |
 | `GET /api/rac/runs/:id` | Run snapshot, planning phase, `implementationAvailable: false`. |
 | `GET /api/rac/tasks/:id/runs` | Bounded history and current revision (null for a removed/archived task). |
 
@@ -102,15 +117,13 @@ Other operation paths return 404. JSON input is streamed with a 16 KiB cap (256
 bytes for pairing), and RAC requests share a 120/minute owner limit. Structured
 errors use `{ error, code }`; no provider error body or stack trace is returned.
 All generated credentials are registered for redaction before log persistence.
-The in-memory known-secret list is bounded; restart to renew credentials if its
-128-value limit is reached.
+The in-memory known-secret registry is bounded to 512 values. Pair-code protection expires after two minutes and session-value protection after eight hours; owner/configured credentials remain protected for their full lifetime. Expired values are pruned without restarting the owner.
 
 ## Shared request and frontend boundaries
 
 All native API handlers, HTML, bundled/project assets and fallback requests check
 the exact loopback Host and listening port. Foreign Origin and cross-site fetch
-metadata are rejected. Mutations require the matching Origin and application/json;
-WebSocket upgrades and event-stream requests require the matching Origin too.
+metadata are rejected, except safe top-level document navigation from another site. Browser mutations and all RAC mutations require the matching Origin; WebSocket upgrades and event-stream requests require it too. Existing non-browser local API clients without browser metadata/cookies can omit Origin. RAC mutations always require JSON. Ordinary requests with a body require JSON except the existing decision editor PUT, which preserves plain text/Markdown (including legacy requests without Content-Type); bodyless ordinary actions do not need a synthetic JSON header.
 Rejection happens before dispatch, parsing or task mutation. No CORS grant or
 reverse-proxy trust is introduced. Existing ordinary task routes remain usable
 without RAC pairing; whole-dashboard identity protection for remote access is
@@ -123,7 +136,7 @@ Asset URLs are rooted so nested task/board routes work. Both source and compiled
 bundle rendering were checked. Native development HMR is disabled on this
 listener to avoid an unguarded path. Backend watch/restart remains available;
 restart after frontend edits as well. Markdown task updates still use the
-existing watchers and dashboard WebSocket. No second frontend or Kanban exists.
+existing watchers and dashboard WebSocket. No second frontend or Kanban exists. HTML/API reads remain no-store; hashed bundle assets use immutable caching and project assets preserve their existing cache behavior. Ordinary unhandled handler exceptions still use the original logged HTTP 500 path. Unknown route value shapes are rejected at registration, before listening.
 
 Private owner credentials can be read by a process running as the same OS user.
 The Codex sandbox's known outside-read behavior is not credential isolation.

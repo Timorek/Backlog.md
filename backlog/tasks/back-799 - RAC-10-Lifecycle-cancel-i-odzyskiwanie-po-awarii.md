@@ -4,7 +4,7 @@ title: '[RAC-10] Lifecycle: cancel i odzyskiwanie po awarii'
 status: To Do
 assignee: []
 created_date: '2026-10-24T08:05:00Z'
-updated_date: '2026-10-24T10:22:00Z'
+updated_date: '2026-10-25T13:07:00Z'
 labels:
   - rac
   - m1-local-mvp
@@ -55,3 +55,9 @@ Q1=A: dostarcz CLI cancel/resume/resolve razem z odpowiadającym API. unknown ni
 3. Zaimplementuj minimalny zakres zgodny z architektura.
 4. Uruchom testy i zanotuj wynik w zadaniu.
 <!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+PR #1 review fix BACK-818 delivers the authenticated/idempotent CLI/API resolve path early: explicit previous-process-stop confirmation, no process killing or automatic resume; unknown -> abandoned, terminal stale requests can be retired. RAC-10 remains To Do for its remaining cancel/resume/lifecycle requirements. Revalidate its plan when picking it up.
+<!-- SECTION:NOTES:END -->

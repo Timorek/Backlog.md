@@ -42,7 +42,7 @@ import { isValidTaskId } from "../utils/task-id.ts";
 import { isAmbiguousTaskIdError, LOCAL_TASK_LOOKUP_HINT, taskNotFoundMessage } from "../utils/task-path.ts";
 import { getVersion } from "../utils/version.ts";
 import { dashboardResponses } from "./dashboard-bundle.ts";
-import { checkLocalRequest, localError } from "./local-policy.ts";
+import { checkLocalRequest, guardLocalRoutes, LocalRequestError, localError } from "./local-policy.ts";
 import { RacHttp } from "./rac-http.ts";
 
 // Regex pattern to match any prefix (letters followed by dash)
@@ -258,6 +258,7 @@ export class BacklogServer {
 	private readonly racDataRoot?: string;
 	private readonly racConnect?: (root: string) => Promise<import("../rac/codex-adapter.ts").CodexAdapter>;
 	private racHttp?: RacHttp;
+	private dashboardAssets = new Set<string>();
 	private server: Server<unknown> | null = null;
 	private runtimeWorkingDirectory: string | null = null;
 	private projectName = "Untitled Project";
@@ -568,7 +569,7 @@ export class BacklogServer {
 					);
 
 					// Disable caching for GET/HEAD so browser always fetches latest content
-					if (req.method === "GET" || req.method === "HEAD") {
+					if ((req.method === "GET" || req.method === "HEAD") && !this.isDashboardAsset(req)) {
 						applyNoStoreHeaders(res.headers);
 					}
 
@@ -593,17 +594,13 @@ export class BacklogServer {
 				/* biome-ignore format: keep cast on single line below for type narrowing */
 			};
 			const routes = serveOptions.routes as Record<string, unknown>;
-			for (const [path, route] of Object.entries(routes)) {
-				if (route === spaIndexHtml)
-					routes[path] = (request: Request) => this.guardIncoming(request, finalPort, () => dashboard.index.clone());
-				else if (route && typeof route === "object") {
-					for (const [method, handler] of Object.entries(route)) {
-						if (typeof handler === "function")
-							(route as Record<string, unknown>)[method] = (request: Request) =>
-								this.guardIncoming(request, finalPort, () => handler(request));
-					}
-				}
-			}
+			guardLocalRoutes(
+				routes,
+				spaIndexHtml,
+				() => dashboard.index.clone(),
+				(request, action) => this.guardIncoming(request, finalPort, action),
+			);
+			this.dashboardAssets = new Set(dashboard.assets.keys());
 			for (const [path, response] of dashboard.assets)
 				routes[path] = (request: Request) => this.guardIncoming(request, finalPort, () => response.clone());
 			const bundleAssetDirectory = process.env[BUNDLE_ASSET_DIR_ENV]?.trim();
@@ -628,8 +625,8 @@ export class BacklogServer {
 						connect: this.racConnect,
 					});
 					const ownedManager = manager;
-					const access = new LocalRacAccess(manager.store.owner, Date.now, (value) =>
-						ownedManager.store.registerRedactionSecret(value),
+					const access = new LocalRacAccess(manager.store.owner, Date.now, (value, expiresAt) =>
+						ownedManager.store.registerRedactionSecret(value, expiresAt),
 					);
 					manager.store.assertOwnership();
 					await access.publish(`${url}/`, this.racDataRoot);
@@ -782,6 +779,11 @@ export class BacklogServer {
 		}
 	}
 
+	private isDashboardAsset(request: Request): boolean {
+		const path = new URL(request.url).pathname;
+		return path.startsWith("/assets/") || this.dashboardAssets.has(path);
+	}
+
 	private async guardIncoming(
 		req: Request,
 		port: number,
@@ -791,10 +793,13 @@ export class BacklogServer {
 			checkLocalRequest(req, this.server?.port ?? port);
 			if (this._stopping) return Response.json({ error: "Server is stopping" }, { status: 503 });
 			const response = await action();
-			if (req.method === "GET" || req.method === "HEAD") applyNoStoreHeaders(response.headers);
+			if ((req.method === "GET" || req.method === "HEAD") && !this.isDashboardAsset(req))
+				applyNoStoreHeaders(response.headers);
 			return response;
 		} catch (error) {
-			return localError(error);
+			return error instanceof LocalRequestError
+				? localError(error)
+				: this.handleError(error instanceof Error ? error : new Error("Request failed"));
 		}
 	}
 

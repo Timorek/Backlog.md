@@ -106,7 +106,11 @@ test("owner credentials, pair code, browser token and CSRF are redacted before p
 });
 test("local request guard rejects rebinding, foreign/missing origins, non-JSON and cross-site streams", () => {
 	const request = (headers: Record<string, string>, method = "GET") =>
-		new Request("http://127.0.0.1:6421/board", { method, headers: { host: "127.0.0.1:6421", ...headers } });
+		new Request("http://127.0.0.1:6421/board", {
+			method,
+			headers: { host: "127.0.0.1:6421", "sec-fetch-site": "same-origin", ...headers },
+			...(method === "GET" ? {} : { body: "{}" }),
+		});
 	expect(() => checkLocalRequest(request({}), 6421)).not.toThrow();
 	for (const headers of [
 		{ host: "evil.test" },

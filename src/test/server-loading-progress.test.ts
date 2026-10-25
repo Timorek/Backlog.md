@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { FileSystem } from "../file-system/operations.ts";
 import { BacklogServer } from "../server/index.ts";
 import type { Task } from "../types/index.ts";
-import { createUniqueTestDir, retry, safeCleanup, withTimeout } from "./test-utils.ts";
+import { createUniqueTestDir, openLocalWebSocket, retry, safeCleanup, withTimeout } from "./test-utils.ts";
 
 let testDir: string;
 let server: BacklogServer | null = null;
@@ -28,7 +28,7 @@ const internals = (instance: BacklogServer): ServerInternals => instance as unkn
 
 const openSocket = async (port: number): Promise<{ socket: WebSocket; states: LoadingState[] }> => {
 	const states: LoadingState[] = [];
-	const socket = new WebSocket(`ws://127.0.0.1:${port}`);
+	const socket = openLocalWebSocket(port);
 	sockets.push(socket);
 	socket.onmessage = (event) => {
 		try {

@@ -87,6 +87,38 @@ export function registerRacCommand(
 				),
 			);
 		});
+	addHelpSchema(rac.command("resolve <runId>"), {
+		reads: "Unknown run and local owner; explicit human process-stop confirmation",
+		required: [
+			{ name: "runId", type: "String", description: "Unknown or terminal run to resolve" },
+			{
+				name: "--confirm-process-stopped",
+				type: "Boolean",
+				description: "Confirm you verified the previous process stopped",
+			},
+		],
+		optional: [{ name: "--idempotency-key", type: "String", description: "Stable key for retries" }],
+		output: "Versioned JSON resolution receipt",
+		examples: ["backlog rac resolve <runId> --confirm-process-stopped --idempotency-key resolution-1"],
+	})
+		.description("resolve uncertain history after verifying the previous process stopped")
+		.requiredOption("--confirm-process-stopped", "confirm the previous process stopped; never kills a process")
+		.option("--idempotency-key <key>", "stable key for this resolution and its retries")
+		.action(async (runId: string, options: { idempotencyKey?: string }) => {
+			const key = options.idempotencyKey ?? randomUUID();
+			console.error(`RAC resolve key: ${key}. Reuse this key if retrying.`);
+			console.log(
+				JSON.stringify(
+					await callOwner(await requireProjectRoot(), `/api/rac/runs/${encodeURIComponent(runId)}/resolve`, {
+						method: "POST",
+						body: { previousProcessStopped: true },
+						key,
+					}),
+					null,
+					2,
+				),
+			);
+		});
 	addHelpSchema(rac.command("status <runId>"), {
 		reads: "Run state from this project's authenticated local owner",
 		required: [{ name: "runId", type: "String", description: "Run identity returned by start" }],

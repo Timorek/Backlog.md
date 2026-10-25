@@ -10,7 +10,14 @@ test("RAC CLI exposes explicit system-auth bypass without implying OS elevation"
 	const program = new Command();
 	registerRacCommand(program, async () => "/project");
 	const rac = program.commands.find((command) => command.name() === "rac");
-	expect(rac?.commands.map((command) => command.name())).toEqual(["enable", "disable", "pair", "start", "status"]);
+	expect(rac?.commands.map((command) => command.name())).toEqual([
+		"enable",
+		"disable",
+		"pair",
+		"start",
+		"resolve",
+		"status",
+	]);
 	for (const command of rac?.commands.filter((command) => ["enable", "disable"].includes(command.name())) ?? []) {
 		expect(command.helpInformation()).toContain("system authentication");
 		expect(command.options.map((option) => option.long)).toEqual(["--skip-system-auth"]);

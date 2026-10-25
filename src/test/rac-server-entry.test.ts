@@ -81,13 +81,22 @@ test("actual configured HTML and generated asset handlers enforce Host and Origi
 	if (!asset) throw new Error("No bundle script");
 	expect((await route(asset)(request(asset, { origin: "https://evil.test" }))).status).toBe(403);
 	expect((await route(asset)(request(asset))).status).toBe(200);
+	expect((await route(asset)(request(asset))).headers.get("cache-control")).toContain("immutable");
 	expect(options.routes["/"]).toBeFunction();
 });
 test("native API handlers reject CSRF and text/plain before any task mutation", async () => {
 	const create = route("/api/tasks", "POST");
 	expect(
-		(await create(request("/api/tasks", { "content-type": "application/json" }, "POST", '{"title":"Injected"}')))
-			.status,
+		(
+			await create(
+				request(
+					"/api/tasks",
+					{ "content-type": "application/json", "sec-fetch-site": "same-origin" },
+					"POST",
+					'{"title":"Injected"}',
+				),
+			)
+		).status,
 	).toBe(403);
 	expect(
 		(
@@ -120,4 +129,69 @@ test("fallback rejects foreign WebSocket/SSE and unknown Host before upgrade", a
 	expect((await options.fetch(request("/api/rac/future", { accept: "text/event-stream" }), native)).status).toBe(403);
 	expect(upgrades).toBe(0);
 	expect((await options.fetch(request("/unknown", { host: "evil.test" }), native)).status).toBe(403);
+});
+
+test("ordinary handler exceptions retain logged HTTP 500 semantics", async () => {
+	const errors = spyOn(console, "error").mockImplementation(() => {});
+	try {
+		const internal = server as unknown as {
+			guardIncoming(req: Request, port: number, action: () => Response): Promise<Response>;
+		};
+		const response = await internal.guardIncoming(request("/api/tasks"), 6421, () => {
+			throw new Error("Fixture handler failure");
+		});
+		expect(response.status).toBe(500);
+		expect(await response.text()).not.toContain("RAC");
+		expect(errors).toHaveBeenCalledTimes(1);
+	} finally {
+		errors.mockRestore();
+	}
+});
+
+test("legacy local clients and the three reviewed dashboard actions reach their existing handlers", async () => {
+	const create = await route(
+		"/api/tasks",
+		"POST",
+	)(request("/api/tasks", { "content-type": "application/json" }, "POST", '{"title":"Legacy local client"}'));
+	expect(create.status).toBe(201);
+	const decisionResponse = await route(
+		"/api/decisions",
+		"POST",
+	)(request("/api/decisions", { "content-type": "application/json" }, "POST", '{"title":"Review decision"}'));
+	const decision = (await decisionResponse.json()) as { id: string };
+	for (const type of ["text/plain", "text/markdown", undefined]) {
+		const req = Object.assign(
+			request(
+				`/api/decisions/${decision.id}`,
+				{ origin: "http://127.0.0.1:6421", ...(type ? { "content-type": type } : {}) },
+				"PUT",
+				"## Context\n\nReviewed editor\n\n## Decision\n\nKeep existing API\n",
+			),
+			{ params: { id: decision.id } },
+		);
+		expect((await route("/api/decisions/:id", "PUT")(req)).status).toBe(200);
+	}
+	const milestoneResponse = await route(
+		"/api/milestones",
+		"POST",
+	)(request("/api/milestones", { "content-type": "application/json" }, "POST", '{"title":"Review milestone"}'));
+	const milestone = (await milestoneResponse.json()) as { id: string };
+	const archive = Object.assign(
+		request(`/api/milestones/${milestone.id}/archive`, { origin: "http://127.0.0.1:6421" }, "POST"),
+		{ params: { id: milestone.id } },
+	);
+	expect((await route("/api/milestones/:id/archive", "POST")(archive)).status).toBe(200);
+	await filesystem.saveDraft({
+		id: "DRAFT-1",
+		title: "Review draft",
+		status: "Draft",
+		assignee: [],
+		createdDate: "2026-10-25",
+		labels: [],
+		dependencies: [],
+	});
+	const promote = Object.assign(request("/api/drafts/DRAFT-1/promote", { origin: "http://127.0.0.1:6421" }, "POST"), {
+		params: { id: "DRAFT-1" },
+	});
+	expect((await route("/api/drafts/:id/promote", "POST")(promote)).status).toBe(200);
 });

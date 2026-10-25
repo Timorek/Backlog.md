@@ -81,15 +81,17 @@ export class RacStore {
 	private closed = false;
 	private depth = 0;
 	private readonly inode: { dev: number; ino: number };
+	private readonly secrets = new Map<string, number>();
 
 	private constructor(
 		private readonly db: Database,
 		readonly path: string,
 		owner: RacOwner,
-		private readonly secrets: string[],
+		secrets: string[],
 		limits: StoreLimits,
 		private readonly now: () => number,
 	) {
+		for (const secret of secrets) this.secrets.set(secret, Number.POSITIVE_INFINITY);
 		this.owner = Object.freeze(owner);
 		this.limits = Object.freeze(limits);
 		const info = lstatSync(path);
@@ -248,13 +250,18 @@ export class RacStore {
 			throw new RacStoreError("owner_lost", "RAC store ownership was lost; writes and starts are fenced", 503, true);
 		}
 	}
-	registerRedactionSecret(value: string): void {
+	private redactionSecrets(): string[] {
+		for (const [value, expires] of this.secrets) if (expires <= this.now()) this.secrets.delete(value);
+		return [...this.secrets.keys()];
+	}
+	registerRedactionSecret(value: string, expiresAt = Number.POSITIVE_INFINITY): void {
 		this.assertOwnership();
-		if (!value || value.length > 16_384) invalid("Invalid RAC redaction secret");
-		if (this.secrets.includes(value)) return;
-		if (this.secrets.length >= 128)
-			throw new RacStoreError("secret_limit", "Restart RAC to renew local credentials", 503);
-		this.secrets.push(value);
+		if (!value || value.length > 16_384 || !(expiresAt === Number.POSITIVE_INFINITY || Number.isSafeInteger(expiresAt)))
+			invalid("Invalid RAC redaction secret");
+		this.redactionSecrets();
+		if (!this.secrets.has(value) && this.secrets.size >= 512)
+			throw new RacStoreError("secret_limit", "Wait for expired local credentials before pairing again", 503);
+		this.secrets.set(value, Math.max(this.secrets.get(value) ?? 0, expiresAt));
 	}
 
 	private write<T>(action: () => T): T {
@@ -293,7 +300,7 @@ export class RacStore {
 		if (
 			typeof value !== "string" ||
 			!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/.test(value) ||
-			redactRacText(value, this.secrets) !== value
+			redactRacText(value, this.redactionSecrets()) !== value
 		)
 			invalid("Invalid or sensitive RAC identifier");
 		return value;
@@ -349,7 +356,7 @@ export class RacStore {
 	}
 	private payload(value: unknown): string {
 		try {
-			return sanitizedJson(value, this.secrets);
+			return sanitizedJson(value, this.redactionSecrets());
 		} catch {
 			return invalid("RAC payload is invalid, too large or contains credential fields");
 		}
@@ -377,11 +384,11 @@ export class RacStore {
 	}
 	private recover(): void {
 		this.write(() => {
+			this.db.run("UPDATE interactions SET status='uncertain' WHERE status='open'");
 			const runs = this.db.query<RunRow, []>(`SELECT * FROM runs WHERE status NOT IN (${terminalSql})`).all();
 			for (const run of runs) {
 				const recovered = recoverRun(run);
 				this.db.run("UPDATE runs SET status=? WHERE id=?", [recovered.status, run.id]);
-				this.db.run("UPDATE interactions SET status='uncertain' WHERE runId=? AND status='open'", [run.id]);
 				if (run.status !== "unknown") this.event(run, "state", { status: "unknown", reason: "owner_restart" });
 			}
 		});
@@ -440,7 +447,11 @@ export class RacStore {
 		sessionId: string;
 	}): StoredRun {
 		return this.write(() => {
-			if (!isValidTaskId(input.taskId) || !Number.isFinite(Date.parse(input.taskCreatedAt)))
+			if (
+				!isValidTaskId(input.taskId) ||
+				!/^[A-Za-z]+-/.test(input.taskId) ||
+				!Number.isFinite(Date.parse(input.taskCreatedAt))
+			)
 				invalid("RAC task identity is invalid");
 			if (!this.getSession(input.sessionId))
 				throw new RacStoreError("session_not_found", "RAC session does not exist", 404);
@@ -492,7 +503,7 @@ export class RacStore {
 	}
 	listTaskRuns(taskId: string, options: { taskCreatedAt?: string; limit?: number; offset?: number } = {}): StoredRun[] {
 		return this.read(() => {
-			if (!isValidTaskId(taskId)) invalid("Invalid task ID");
+			if (!isValidTaskId(taskId) || !/^[A-Za-z]+-/.test(taskId)) invalid("Use a fully qualified task ID");
 			const offset = options.offset ?? 0;
 			if (!Number.isSafeInteger(offset) || offset < 0) invalid("Invalid history offset");
 			return this.db
@@ -527,21 +538,27 @@ export class RacStore {
 			return this.getRun(id);
 		});
 	}
-	resolveUnknown(id: string, previousProcessStopped: boolean): StoredRun {
+	resolveRun(id: string, previousProcessStopped: boolean): StoredRun {
 		return this.write(() => {
 			const run = this.run(id, false);
-			const resolved = resolveUnknownRun(run, previousProcessStopped);
-			if (run.status === resolved.status) return this.publicRun(run);
-			this.db.run("UPDATE runs SET status='abandoned',finishedAt=? WHERE id=?", [this.now(), id]);
+			if (previousProcessStopped !== true) resolveUnknownRun(run, false);
+			if (run.status !== "unknown" && !isTerminalRunStatus(run.status))
+				throw new RacStoreError("run_not_resolvable", "Only an unknown or terminal run can be resolved", 409);
+			const pending = this.listInteractions(id).some((item) => item.status === "open" || item.status === "uncertain");
+			if (run.status !== "unknown" && !pending) return this.publicRun(run);
+			const status = run.status === "unknown" ? resolveUnknownRun(run, true).status : run.status;
+			if (run.status === "unknown")
+				this.db.run("UPDATE runs SET status=?,finishedAt=? WHERE id=?", [status, this.now(), id]);
 			this.db.run(
 				"UPDATE interactions SET status='stale',resolvedAt=? WHERE runId=? AND status IN ('open','uncertain')",
 				[this.now(), id],
 			);
-			this.db.run("UPDATE sessions SET currentTurnId=NULL WHERE id=?", [run.sessionId]);
-			this.event(run, "state", { status: "abandoned", reason: "human_resolution" });
+			if (run.status === "unknown") this.db.run("UPDATE sessions SET currentTurnId=NULL WHERE id=?", [run.sessionId]);
+			this.event(run, "state", { status, reason: "human_resolution" });
 			return this.getRun(id);
 		});
 	}
+
 	bindTurn(runId: string, turnId: string | null): StoredRun {
 		return this.write(() => {
 			const run = this.run(runId);
@@ -600,7 +617,10 @@ export class RacStore {
 			)
 				invalid("Invalid interaction metadata");
 			if (typeof input.rpcRequestId === "string") {
-				if (input.rpcRequestId.length > 1024 || redactRacText(input.rpcRequestId, this.secrets) !== input.rpcRequestId)
+				if (
+					input.rpcRequestId.length > 1024 ||
+					redactRacText(input.rpcRequestId, this.redactionSecrets()) !== input.rpcRequestId
+				)
 					invalid("Invalid or sensitive RPC request ID");
 			} else if (!Number.isSafeInteger(input.rpcRequestId)) invalid("Invalid RPC request ID");
 			const id = this.id(input.id ?? randomUUID());
@@ -642,25 +662,42 @@ export class RacStore {
 			return this.listInteractions(runId).find((row) => row.id === interactionId) as StoredInteraction;
 		});
 	}
+	private truncation(run: RunRow, reason: string): StoredEvent | null {
+		if (this.db.query("SELECT 1 FROM events WHERE runId=? AND kind='truncated' LIMIT 1").get(run.id)) return null;
+		return this.event(run, "truncated", { reason });
+	}
 	appendEvent(runId: string, input: EventInput): { event: StoredEvent | null; truncated: boolean } {
 		return this.write(() => {
 			const run = this.run(runId);
 			if (isTerminalRunStatus(run.status) || run.status === "unknown")
 				throw new RacStoreError("run_not_active", "Cannot append to a finished or unknown run", 409);
 			let value: Record<string, unknown>;
+			let shortened = false;
 			if (input.kind === "text" || input.kind === "agent_message" || input.kind === "user_message") {
-				if (typeof input.text !== "string" || Buffer.byteLength(input.text) > MAX_EVENT_BYTES)
-					invalid("Invalid or oversized event text");
+				if (typeof input.text !== "string") invalid("Invalid event text");
 				if (Object.keys(input).some((key) => !["kind", "text", "itemId"].includes(key)))
 					invalid("Unexpected event payload fields");
 				value = {
-					text: input.text,
+					text: redactRacText(input.text, this.redactionSecrets()),
 					...(input.kind === "text" ? {} : { sessionId: run.sessionId }),
 					...("itemId" in input && input.itemId ? { itemId: this.id(input.itemId) } : {}),
 				};
 			} else if (input.kind === "error" && STORE_ERROR_CODES.includes(input.code) && Object.keys(input).length === 2)
 				value = { code: input.code };
 			else return invalid("Unsupported RAC event payload");
+			if (typeof value.text === "string" && Buffer.byteLength(JSON.stringify(value)) > MAX_EVENT_BYTES) {
+				const text = value.text;
+				let low = 0;
+				let high = text.length;
+				while (low < high) {
+					const middle = Math.ceil((low + high) / 2);
+					if (Buffer.byteLength(JSON.stringify({ ...value, text: text.slice(0, middle) })) <= MAX_EVENT_BYTES)
+						low = middle;
+					else high = middle - 1;
+				}
+				value.text = text.slice(0, low).replace(/[\uD800-\uDBFF]$/, "");
+				shortened = true;
+			}
 			const bytes = Buffer.byteLength(this.payload(value));
 			if (input.kind === "text") {
 				if (run.logTruncated) return { event: null, truncated: true };
@@ -669,12 +706,14 @@ export class RacStore {
 					run.logBytes + bytes > this.limits.runLogBytes ||
 					this.totalBytes() + bytes + remainingReserve > this.limits.projectBytes
 				) {
-					const event = this.event(run, "truncated", { reason: "log_limit" });
+					const event = this.truncation(run, "log_limit");
 					this.db.run("UPDATE runs SET logTruncated=1 WHERE id=?", [runId]);
 					return { event, truncated: true };
 				}
 			}
-			return { event: this.event(run, input.kind, value, input.kind === "text"), truncated: false };
+			const event = this.event(run, input.kind, value, input.kind === "text");
+			if (shortened) this.truncation(this.run(runId), "event_limit");
+			return { event, truncated: shortened };
 		});
 	}
 	listEvents(runId: string, after = 0, limit = 100): { events: StoredEvent[]; nextAfter: number; hasMore: boolean } {

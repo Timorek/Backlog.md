@@ -33,6 +33,7 @@ export async function dashboardResponses(
 		}
 	}
 	if (!index) throw new Error("Dashboard entry is missing");
+	for (const response of assets.values()) response.headers.set("Cache-Control", "public, max-age=31536000, immutable");
 	const rewrite = (element: HTMLRewriterTypes.Element, attribute: string) => {
 		const value = element.getAttribute(attribute);
 		if (value && !/^(?:[a-z]+:|\/\/|#)/i.test(value)) {

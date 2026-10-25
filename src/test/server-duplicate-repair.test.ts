@@ -6,7 +6,7 @@ import type { DuplicateRepairPlan, DuplicateRepairResult } from "../core/duplica
 import { serializeTask } from "../markdown/serializer.ts";
 import { BacklogServer } from "../server/index.ts";
 import type { SearchResult, Task } from "../types/index.ts";
-import { createUniqueTestDir, retry, safeCleanup, sleep, withTimeout } from "./test-utils.ts";
+import { createUniqueTestDir, openLocalWebSocket, retry, safeCleanup, sleep, withTimeout } from "./test-utils.ts";
 
 let testDir: string;
 let server: BacklogServer | null = null;
@@ -75,7 +75,7 @@ afterEach(async () => {
 describe("duplicate repair server boundary", () => {
 	it("publishes a real preview refresh once before queued watcher reconciliation", async () => {
 		const messages: string[] = [];
-		const socket = new WebSocket(`ws://127.0.0.1:${serverPort}`);
+		const socket = openLocalWebSocket(serverPort);
 		const serverCore = (server as unknown as { core: Core }).core;
 		const originalLoadTasks = serverCore.loadTasks;
 		await withTimeout(

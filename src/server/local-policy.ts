@@ -16,16 +16,65 @@ export function checkLocalRequest(request: Request, port: number): void {
 	if (url.protocol !== "http:" || !hosts.includes(url.host) || !matchesHost)
 		throw new LocalRequestError("host_forbidden", "Use the displayed local dashboard address");
 	const origin = request.headers.get("origin");
+	const rac = url.pathname.startsWith("/api/rac/");
+	const browser = ["sec-fetch-site", "sec-fetch-dest", "cookie"].some((name) => request.headers.has(name));
 	const mutation = !["GET", "HEAD", "OPTIONS"].includes(request.method);
 	const stream =
 		request.headers.get("upgrade")?.toLowerCase() === "websocket" ||
 		request.headers.get("accept")?.includes("text/event-stream");
-	if ((origin !== null && origin !== url.origin) || ((mutation || stream) && !origin))
+	if ((origin !== null && origin !== url.origin) || ((stream || (mutation && (rac || browser))) && !origin))
 		throw new LocalRequestError("origin_forbidden", "A matching dashboard Origin is required");
-	if (request.headers.get("sec-fetch-site") === "cross-site")
+	const navigation =
+		!mutation &&
+		!stream &&
+		/^\/(?:tasks(?:\/.*)?|board(?:\/.*)?|documentation(?:\/.*)?|decisions(?:\/.*)?|milestones|drafts|statistics|settings|rac\/pair)?$/.test(
+			url.pathname,
+		) &&
+		request.headers.get("sec-fetch-mode") === "navigate" &&
+		request.headers.get("sec-fetch-dest") === "document";
+	if (request.headers.get("sec-fetch-site") === "cross-site" && !navigation)
 		throw new LocalRequestError("origin_forbidden", "Cross-site dashboard requests are forbidden");
-	if (mutation && request.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() !== "application/json")
+	const type = request.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
+	const hasBody = request.headers.has("content-length")
+		? request.headers.get("content-length") !== "0"
+		: request.body !== null;
+	const legacyText =
+		!rac &&
+		request.method === "PUT" &&
+		/^\/api\/decisions\/[^/]+$/.test(url.pathname) &&
+		(!type || type === "text/plain" || type === "text/markdown");
+	if (mutation && (rac || hasBody) && type !== "application/json" && !legacyText)
 		throw new LocalRequestError("json_required", "Mutations require application/json", 415);
+}
+
+type Handler = (request: Request, context?: unknown) => Response | Promise<Response>;
+export function guardLocalRoutes(
+	routes: Record<string, unknown>,
+	html: unknown,
+	render: Handler,
+	guard: (request: Request, action: () => Response | Promise<Response>) => Promise<Response>,
+): void {
+	for (const [path, value] of Object.entries(routes)) {
+		if (value === html) routes[path] = (request: Request) => guard(request, () => render(request));
+		else if (typeof value === "function")
+			routes[path] = (request: Request, context?: unknown) =>
+				guard(request, () => (value as Handler)(request, context));
+		else if (value instanceof Response) routes[path] = (request: Request) => guard(request, () => value.clone());
+		else if (
+			value &&
+			typeof value === "object" &&
+			Object.keys(value).length &&
+			Object.entries(value).every(
+				([method, handler]) =>
+					["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"].includes(method) &&
+					typeof handler === "function",
+			)
+		) {
+			for (const [method, handler] of Object.entries(value))
+				(value as Record<string, unknown>)[method] = (request: Request, context?: unknown) =>
+					guard(request, () => (handler as Handler)(request, context));
+		} else throw new Error(`Unsupported dashboard route shape: ${path}`);
+	}
 }
 
 export async function readLocalJson(request: Request, limit = 16_384): Promise<Record<string, unknown>> {

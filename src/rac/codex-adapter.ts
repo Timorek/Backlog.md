@@ -11,6 +11,8 @@ import {
 } from "./codex-rpc.ts";
 import { resolveRacProject } from "./project-context.ts";
 
+export const CODEX_PROTOCOL_VERSION = "0.162.1";
+
 type AdapterOptions = {
 	binaryPath?: string;
 	dataRoot?: string;

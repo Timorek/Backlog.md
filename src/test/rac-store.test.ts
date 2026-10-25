@@ -120,12 +120,12 @@ describe.skipIf(process.platform === "win32")("RAC private SQLite store", () => 
 		expect(store.listInteractions("run-1")[0]?.status).toBe("uncertain");
 		expect(() => reserve("run-2", "session-2")).toThrow("active");
 		expect(() => store.appendEvent("run-1", { kind: "text", text: "stale" })).toThrow("previous owner");
-		expect(() => store.resolveUnknown("run-1", false)).toThrow("confirmed stopped");
+		expect(() => store.resolveRun("run-1", false)).toThrow("confirmed stopped");
 		const before = store.listEvents("run-1").events.length;
 		store.close();
 		store = await RacStore.open(root, { dataRoot, now: () => clock });
 		expect(store.listEvents("run-1").events).toHaveLength(before);
-		store.resolveUnknown("run-1", true);
+		store.resolveRun("run-1", true);
 		expect(store.getRun("run-1").status).toBe("abandoned");
 		expect(reserve("run-2", "session-2").status).toBe("starting");
 	});
@@ -438,7 +438,7 @@ describe.skipIf(process.platform === "win32")("RAC private SQLite store", () => 
 		expect(() => store.createSession({ protocolVersion: "0.162.1" })).toThrow("ownership");
 		store = await RacStore.open(root, { dataRoot, limits: { controlBytes: 256 } });
 		expect(store.getRun("run-1").status).toBe("unknown");
-		expect(store.resolveUnknown("run-1", true).status).toBe("abandoned");
+		expect(store.resolveRun("run-1", true).status).toBe("abandoned");
 	});
 
 	test("asynchronous idempotency callbacks roll back database effects and fence the store", async () => {

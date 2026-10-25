@@ -22,9 +22,11 @@ let core: Core;
 let manager: AgentManager;
 let transport: MockCodexTransport | undefined;
 let starts: number;
+let holdThread = false;
+let releaseThread: (() => void) | undefined;
 const tick = () => new Promise((resolve) => setTimeout(resolve, 10));
 async function until(predicate: () => boolean) {
-	for (let i = 0; i < 100; i++) {
+	for (let i = 0; i < 200; i++) {
 		if (predicate()) return;
 		await tick();
 	}
@@ -62,6 +64,8 @@ beforeEach(async () => {
 	await setRacEnabled(root, true, { dataRoot, skipSystemAuth: true });
 	starts = 0;
 	transport = undefined;
+	holdThread = false;
+	releaseThread = undefined;
 	manager = await AgentManager.open(root, {
 		dataRoot,
 		core,
@@ -69,23 +73,27 @@ beforeEach(async () => {
 			starts++;
 			transport = new MockCodexTransport((message, tx) => {
 				if (message.method === "initialize") tx.emit({ id: message.id, result: {} });
-				if (message.method === "thread/start")
-					tx.emit({
-						id: message.id,
-						result: {
-							thread: { id: "thread" },
-							cwd: workspace,
-							approvalPolicy: "on-request",
-							approvalsReviewer: "user",
-							sandbox: {
-								type: "workspaceWrite",
-								writableRoots: [workspace],
-								networkAccess: false,
-								excludeSlashTmp: true,
-								excludeTmpdirEnvVar: true,
+				if (message.method === "thread/start") {
+					const emit = () =>
+						tx.emit({
+							id: message.id,
+							result: {
+								thread: { id: "thread" },
+								cwd: workspace,
+								approvalPolicy: "on-request",
+								approvalsReviewer: "user",
+								sandbox: {
+									type: "workspaceWrite",
+									writableRoots: [workspace],
+									networkAccess: false,
+									excludeSlashTmp: true,
+									excludeTmpdirEnvVar: true,
+								},
 							},
-						},
-					});
+						});
+					if (holdThread) releaseThread = emit;
+					else emit();
+				}
 				if (message.method === "turn/start") {
 					tx.emit({ method: "turn/started", params: { threadId: "thread", turn: { id: "turn" } } });
 					tx.emit({ id: message.id, result: { turn: { id: "turn" } } });
@@ -335,4 +343,136 @@ test("pairing form submits the one-use code and displays success without exposin
 		dom.window.close();
 		await access.close();
 	}
+});
+
+test("numeric routes and starts honor a custom project prefix", async () => {
+	const config = await core.filesystem.loadConfig();
+	if (!config) throw new Error("Missing fixture config");
+	await core.filesystem.saveConfig({ ...config, prefixes: { task: "back" } });
+	await core.filesystem.saveTask({
+		id: "BACK-797",
+		title: "Custom prefix",
+		status: "To Do",
+		assignee: [],
+		createdDate: "2026-10-25",
+		labels: [],
+		dependencies: [],
+	});
+	const revision = (await manager.taskHistory("797")).taskRevision;
+	const started = await manager.start({ taskId: "797", expectedTaskRevision: revision }, "numeric");
+	const id = (started.result as { runId: string }).runId;
+	expect(manager.store.getRun(id).taskId).toBe("BACK-797");
+	expect((await manager.taskHistory("797")).runs).toHaveLength(1);
+});
+test("a non-Git project can plan a task", async () => {
+	await rm(join(root, ".git"), { recursive: true, force: true });
+	const id = await run();
+	expect(manager.store.getRun(id).status).toBe("running");
+});
+
+test("filesystem-only task configuration cannot bypass an actual Git operation", async () => {
+	const config = await core.filesystem.loadConfig();
+	if (!config) throw new Error("No fixture config");
+	await core.filesystem.saveConfig({ ...config, filesystemOnly: true });
+	await Bun.write(join(root, ".git", "MERGE_HEAD"), "synthetic");
+	await expect(manager.start(await body(), "filesystem-merge")).rejects.toMatchObject({ code: "git_operation_active" });
+	expect(starts).toBe(0);
+});
+test("cancel-only approvals are denied with an offered decision and release the slot after cleanup", async () => {
+	const id = await run();
+	transport?.emit({
+		id: 0,
+		method: "item/commandExecution/requestApproval",
+		params: { threadId: "thread", turnId: "turn", availableDecisions: ["cancel"] },
+	});
+	await until(() => manager.store.getRun(id).status === "interrupted");
+	expect(
+		transport?.messages.some((message) => message.id === 0 && rpcRecord(message.result).decision === "cancel"),
+	).toBe(true);
+});
+test("disabling RAC stops the verified owned group without leaving an unknown slot", async () => {
+	const id = await run();
+	await setRacEnabled(root, false, { dataRoot, skipSystemAuth: true });
+	await until(() => manager.store.getRun(id).status === "interrupted");
+	await setRacEnabled(root, true, { dataRoot, skipSystemAuth: true });
+	expect((await manager.status(id)).run.status).toBe("interrupted");
+});
+test("unverified cleanup remains unknown until authenticated, idempotent human resolution", async () => {
+	const id = await run();
+	if (!transport) throw new Error("No fixture transport");
+	const close = transport.close.bind(transport);
+	transport.close = async () => ({ ...(await close()), groupStopped: false });
+	transport.crash();
+	await until(() => manager.store.getRun(id).status === "unknown");
+	await expect(manager.resolve(id, { previousProcessStopped: false }, "resolve")).rejects.toMatchObject({
+		status: 400,
+	});
+	const access = new LocalRacAccess(manager.store.owner);
+	await access.publish("http://127.0.0.1:6421/", dataRoot);
+	const http = new RacHttp(manager, access);
+	const network = spyOn(globalThis, "fetch").mockImplementation(
+		Object.assign(
+			async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+				const req = new Request(input, init);
+				req.headers.set("host", new URL(req.url).host);
+				checkLocalRequest(req, 6421);
+				return (await http.handle(req)) ?? new Response(null, { status: 404 });
+			},
+			{ preconnect: globalThis.fetch.preconnect },
+		),
+	);
+	const logs: string[] = [];
+	const output = spyOn(console, "log").mockImplementation((value) => logs.push(String(value)));
+	const errors = spyOn(console, "error").mockImplementation(() => {});
+	try {
+		const cli = new Command().exitOverride().configureOutput({ writeErr: () => {} });
+		registerRacCommand(
+			cli,
+			async () => root,
+			undefined,
+			(project, path, options) => callRacOwner(project, path, { ...options, dataRoot }),
+		);
+		await expect(cli.parseAsync(["rac", "resolve", id], { from: "user" })).rejects.toThrow();
+		await cli.parseAsync(["rac", "resolve", id, "--confirm-process-stopped", "--idempotency-key", "resolution"], {
+			from: "user",
+		});
+		expect(JSON.parse(logs[0] as string).result.status).toBe("abandoned");
+		expect((await manager.resolve(id, { previousProcessStopped: true }, "resolution")).replayed).toBe(true);
+		expect(manager.store.getRun(id).status).toBe("abandoned");
+	} finally {
+		network.mockRestore();
+		output.mockRestore();
+		errors.mockRestore();
+		await access.close();
+	}
+});
+test("resolution cannot retire a live owned run or fence the healthy owner", async () => {
+	const id = await run();
+	await expect(manager.resolve(id, { previousProcessStopped: true }, "live")).rejects.toMatchObject({
+		code: "cleanup_pending",
+	});
+	expect((await manager.status(id)).run.status).toBe("running");
+});
+test("closing during thread startup records verified interruption", async () => {
+	holdThread = true;
+	const started = await manager.start(await body(), "closing");
+	const id = (started.result as { runId: string }).runId;
+	await until(() => Boolean(releaseThread));
+	const closing = manager.close();
+	if (!releaseThread) throw new Error("Thread response absent");
+	releaseThread();
+	await closing;
+	const reopened = await AgentManager.open(root, { dataRoot, core });
+	try {
+		expect(reopened.store.getRun(id).status).toBe("interrupted");
+	} finally {
+		await reopened.close();
+	}
+});
+test("RPC timeout followed by verified group cleanup releases the slot", async () => {
+	holdThread = true;
+	const started = await manager.start(await body(), "timeout");
+	const id = (started.result as { runId: string }).runId;
+	await until(() => manager.store.getRun(id).status === "interrupted");
+	expect(manager.store.getRun(id).status).toBe("interrupted");
 });

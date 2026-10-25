@@ -210,7 +210,7 @@ Taski, pliki repozytorium, komentarze, zależności i output agenta są wejście
 
 | Granica | Wymagana kontrola |
 | --- | --- |
-| Przeglądarka → API | Host wyłącznie `127.0.0.1:<port>` lub `localhost:<port>` (ochrona przed DNS rebinding); Origin serwera dla mutacji, upgrade WebSocket i otwarcia SSE; mutacje tylko z `Content-Type: application/json`; sesja i CSRF dla mutacji opartych na cookie; limity wejścia i żądań; obce strony nie dostają CORS. |
+| Przeglądarka → API | Host wyłącznie `127.0.0.1:<port>` lub `localhost:<port>` (ochrona przed DNS rebinding); Origin serwera dla mutacji przeglądarkowych/RAC, upgrade WebSocket i otwarcia SSE; mutacje RAC tylko z `Content-Type: application/json`, istniejące API zachowuje zgodne formaty treści; sesja i CSRF dla mutacji opartych na cookie; limity wejścia i żądań; obce strony nie dostają CORS. |
 | Ciasteczka | Cookie nie izolują portów: ciasteczko z `127.0.0.1:6421` trafia także na `127.0.0.1:6420` i do innych lokalnych aplikacji, które mogą je nadpisać. Nazwa cookie zawiera `projectKey`, a sesja po stronie serwera jest związana z `projectKey` i generacją właściciela; HttpOnly i odpowiednia polityka SameSite, Secure przy dostępie zdalnym. |
 | CLI → właściciel | Losowy lokalny sekret z pliku prywatnego dla użytkownika, weryfikacja projectKey i generacji; sekret poza argv, URL i logami. Poświadczenie pozwalające rozstrzygać interakcje musi być nieosiągalne z sandboxa agenta (niżej). |
 | Backend → provider | Stała skonfigurowana binarka, lista argumentów bez shell, jawne `--listen stdio://`, ograniczone cwd/env/uprawnienia, brak root/admin i `danger-full-access`. Przy każdym `thread/start`, `thread/resume` i `turn/start` RAC jawnie ustawia polityki: `sandbox` w thread/start i thread/resume, a `sandboxPolicy` w turn/start, wraz z `approvalPolicy` i `approvalsReviewer: "user"`. Efektywne wartości porównuje z `ThreadStartResponse` / `ThreadResumeResponse`; słabsze oznaczają odmowę startu. `TurnStartResponse` w 0.162.1 zawiera wyłącznie `turn`, więc nie udajemy potwierdzenia polityk z tej odpowiedzi. RAC-03 ustala sprawdzalną weryfikację na poziomie tury; brak dowodu nie pozwala osłabić polityki. |
@@ -233,6 +233,17 @@ restarcie właściciela. CLI start/status używa prywatnego deskryptora i nagł�
 mutacje sesji cookie wymagają CSRF. Nie wymaga to hasła konta przy każdym starcie.
 To nie jest izolacja poświadczeń decyzji ani autoryzacja dostępu z internetu.
 Szczegóły, dowody i ograniczenia: [LOCAL-API.md](../LOCAL-API.md).
+
+**Korekta po review PR #1:** Origin pozostaje obowiązkowy dla przeglądarkowych
+mutacji oraz wszystkich mutacji RAC i połączeń WS/SSE. Zwykłe lokalne klienty bez
+metadanych przeglądarki/cookie zachowują dotychczasową obsługę API. Bezpieczna
+nawigacja GET do dokumentu z obcej witryny jest dozwolona. Pusty POST zwykłego API
+nie wymaga Content-Type; istniejący tekstowy edytor decyzji zachowuje swój format.
+RAC nadal wymaga JSON, uwierzytelnienia i CSRF dla cookie. Potwierdzone sprzątnięcie
+własnej grupy procesów oznacza interrupted; brak dowodu pozostawia unknown.
+BACK-818 dostarcza wcześniej planowane dla RAC-10 ludzkie CLI/API resolve, bez
+cancel/resume i bez automatycznego zabijania lub ponawiania procesów.
+
 
 ## D8. Host developerski, docelowy runner i granica przyszłej rozbudowy
 

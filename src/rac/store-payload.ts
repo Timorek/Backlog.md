@@ -18,7 +18,7 @@ export function redactRacText(text: string, secrets: readonly string[] = []): st
 	for (const secret of secrets) if (secret) value = value.split(secret).join("[REDACTED]");
 	return value
 		.replace(
-			/-----BEGIN [^-\n]*PRIVATE KEY-----[\s\S]*?(?:-----END [^-\n]*PRIVATE KEY-----|$)/g,
+			/-----BEGIN [^-\n]*PRIVATE KEY(?: BLOCK)?-----[\s\S]*?(?:-----END [^-\n]*PRIVATE KEY(?: BLOCK)?-----|$)/g,
 			"[REDACTED PRIVATE KEY]",
 		)
 		.replace(
@@ -27,10 +27,10 @@ export function redactRacText(text: string, secrets: readonly string[] = []): st
 		)
 		.replace(/\b(Bearer|Basic)\s+[^\s"'<>]+/gi, "$1 [REDACTED]")
 		.replace(
-			/\b((?:api[_-]?key|access[_-]?token|refresh[_-]?token|token|password|secret|authorization|cookie)["']?\s*[=:]\s*)(?:"[^"\n]*"|'[^'\n]*'|[^\s,;}]+)/gi,
+			/\b((?:[A-Za-z0-9]+[_-])*(?:api[_-]?key|access[_-]?token|refresh[_-]?token|token|password|secret|secret[_-]access[_-]key|authorization|cookie)["']?\s*[=:]\s*)(?:"[^"\n]*"|'[^'\n]*'|[^\s,;}]+)/gi,
 			"$1[REDACTED]",
 		)
-		.replace(/(https?:\/\/)[^\s/@]+:[^\s/@]+@/gi, "$1[REDACTED]@");
+		.replace(/([a-z][a-z0-9+.-]*:\/\/)[^\s/@]+:[^\s/@]+@/gi, "$1[REDACTED]@");
 }
 
 export function canonicalJson(value: unknown): string {

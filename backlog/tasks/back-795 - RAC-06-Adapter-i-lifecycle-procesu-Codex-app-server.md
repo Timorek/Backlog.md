@@ -1,11 +1,11 @@
 ---
 id: BACK-795
 title: '[RAC-06] Adapter i lifecycle procesu Codex app-server'
-status: Done
+status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-10-24T08:05:00Z'
-updated_date: '2026-10-24T19:26:00Z'
+updated_date: '2026-10-25T12:41:00Z'
 labels:
   - rac
   - m1-local-mvp
@@ -45,7 +45,7 @@ Runtime to Bun/TypeScript w istniejącym Backlog.md. Używaj jawnego --listen st
 - [x] #3 Rozłączenie i crash procesu są wykrywane
 - [x] #4 stdout zdarzeń nie jest traktowane jako polecenia shella
 - [x] #5 Testy adaptera używają mock transport
-- [x] #6 Spawn i zamykanie procesu testowane na macOS; ścieżka binarki działa przy uruchomieniu z launchd
+- [ ] #6 Spawn i zamykanie procesu testowane na macOS; ścieżka binarki działa przy uruchomieniu z launchd
 - [x] #7 Adapter pod Bun używa wyłącznie stdio i dozwolonych metod, bez otwartego listenera i bez metod ogólnego wykonania
 - [x] #8 Nieobsługiwany request nie zawiesza tury; słabsza polityka blokuje start; cleanup procesów ma test na deklarowanym systemie
 <!-- AC:END -->
@@ -93,6 +93,8 @@ Final real-provider gate PASSED in user Terminal on macOS with the corrected pro
 AC6 verification: real Bun spawning and EOF/group cleanup passed on macOS, including the production App Server. The binary was resolved from fixed absolute locations and executed in the transport-constructed environment; deterministic resolver tests cover explicit paths, executability and rejection of shell wrappers/relative PATH lookups. This establishes launchd-independent executable discovery/environment behavior. No actual launchd job/service was installed or tested; service deployment/auth context/autostart remains RAC-20. Windows native containment is not implemented and fails closed. Linux/native crash-resume remain unverified as documented.
 All other AC already have mock and real-process evidence. Latest implementation verification remains 48 tests / 171 assertions in 5 files PASS; types 577 files PASS; Biome now 512 files PASS after the success artifact; adapter/smoke bundles PASS. Earlier broad RAC/server/spike regression was 190 tests in 12 files PASS. No implementation changed after these successful checks; the final native result verifies the same code. Documentation was rewritten around the final behavior and actual platform boundaries; historical failures remain linked as evidence. The exact cause of the earlier unclassified RPC failure is not claimed.
 All 8 AC and 3 DoD items verified within this task scope. No execution endpoint, dashboard buttons, persistence/owner store or unrestricted process API added. No push, no next task. Preserve the pre-existing ordinal change outside the commit.
+
+PR #1 review correction: AC6 includes execution from launchd, which was not actually tested. Fixed-PATH/environment tests do not prove that clause. Reopen and uncheck AC6; retain all verified adapter evidence and the pre-existing user ordinal edit. Actual launchd verification remains outstanding; no service installed by this correction.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

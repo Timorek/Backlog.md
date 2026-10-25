@@ -24,43 +24,51 @@ function denied(code = "session_required", status = 401): never {
 }
 
 export async function readOwnerDescriptor(root: string, dataRoot?: string): Promise<OwnerDescriptor> {
-	const project = await resolveRacProject(root);
-	const directory = dirname(await racSettingsLocation(project, dataRoot));
-	await assertPrivateRacDirectory(dirname(directory));
-	await assertPrivateRacDirectory(directory);
-	const file = await open(
-		join(directory, "owner.json"),
-		constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
-	);
 	try {
-		const info = await file.stat();
-		if (
-			!info.isFile() ||
-			info.nlink !== 1 ||
-			info.uid !== process.getuid?.() ||
-			(info.mode & 0o077) !== 0 ||
-			info.size > 4096
-		)
-			denied();
-		const value = JSON.parse(await file.readFile("utf8")) as OwnerDescriptor;
-		const url = new URL(value.url);
-		if (
-			value.schemaVersion !== 1 ||
-			value.projectKey !== project.projectKey ||
-			!/^[a-f0-9-]{36}$/.test(value.generation) ||
-			!/^[A-Za-z0-9_-]{43}$/.test(value.secret) ||
-			url.protocol !== "http:" ||
-			url.hostname !== "127.0.0.1" ||
-			url.pathname !== "/" ||
-			url.search ||
-			url.hash ||
-			url.username ||
-			url.password
-		)
-			denied();
-		return value;
-	} finally {
-		await file.close();
+		const project = await resolveRacProject(root);
+		const directory = dirname(await racSettingsLocation(project, dataRoot));
+		await assertPrivateRacDirectory(dirname(directory));
+		await assertPrivateRacDirectory(directory);
+		const file = await open(
+			join(directory, "owner.json"),
+			constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
+		);
+		try {
+			const info = await file.stat();
+			if (
+				!info.isFile() ||
+				info.nlink !== 1 ||
+				info.uid !== process.getuid?.() ||
+				(info.mode & 0o077) !== 0 ||
+				info.size > 4096
+			)
+				denied();
+			const value = JSON.parse(await file.readFile("utf8")) as OwnerDescriptor;
+			const url = new URL(value.url);
+			if (
+				value.schemaVersion !== 1 ||
+				value.projectKey !== project.projectKey ||
+				!/^[a-f0-9-]{36}$/.test(value.generation) ||
+				!/^[A-Za-z0-9_-]{43}$/.test(value.secret) ||
+				url.protocol !== "http:" ||
+				url.hostname !== "127.0.0.1" ||
+				url.pathname !== "/" ||
+				url.search ||
+				url.hash ||
+				url.username ||
+				url.password
+			)
+				denied();
+			return value;
+		} finally {
+			await file.close();
+		}
+	} catch {
+		throw new LocalRequestError(
+			"owner_unavailable",
+			"Start this project's local dashboard with RAC enabled and verify its private owner settings",
+			503,
+		);
 	}
 }
 
@@ -74,7 +82,7 @@ export class LocalRacAccess {
 	constructor(
 		readonly owner: RacOwner,
 		private readonly now = Date.now,
-		private readonly protectSecret: (value: string) => void = () => {},
+		private readonly protectSecret: (value: string, expiresAt?: number) => void = () => {},
 	) {
 		this.credential = secret();
 		this.protectSecret(this.credential);
@@ -151,7 +159,7 @@ export class LocalRacAccess {
 	issuePairing(request: Request): { code: string; expiresIn: number } {
 		if (this.authorize(request, true) !== "cli") denied();
 		this.pairing = { code: randomBytes(5).toString("hex").toUpperCase(), expires: this.now() + 120000, attempts: 0 };
-		this.protectSecret(this.pairing.code);
+		this.protectSecret(this.pairing.code, this.pairing.expires);
 		return { code: this.pairing.code, expiresIn: 120 };
 	}
 	pair(code: unknown): { csrf: string; cookie: string } {
@@ -165,8 +173,8 @@ export class LocalRacAccess {
 		if (this.sessions.size >= 32) denied("session_limit", 429);
 		const id = secret();
 		const csrf = secret();
-		this.protectSecret(id);
-		this.protectSecret(csrf);
+		this.protectSecret(id, this.now() + 8 * 60 * 60 * 1000);
+		this.protectSecret(csrf, this.now() + 8 * 60 * 60 * 1000);
 		this.sessions.set(id, { csrf, expires: this.now() + 8 * 60 * 60 * 1000 });
 		return { csrf, cookie: `${this.cookieName}=${id}; HttpOnly; SameSite=Strict; Path=/; Max-Age=28800` };
 	}

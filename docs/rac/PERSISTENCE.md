@@ -47,7 +47,7 @@ from untrusted request fields.
 | Record | Meaning |
 | --- | --- |
 | Project | One canonical root, project key and current owner generation. |
-| Session | Codex provider/protocol version, unique optional thread ID, current turn. |
+| Session | Codex provider and adapter schema target version, unique optional thread ID, current turn. |
 | Run | One task and session; raw-byte SHA-256 task revision, task creation identity, generation, lifecycle state, turn, timestamps and safe error code. |
 | Interaction | Pending request identity including JSON-RPC number/string type, run/generation/thread/turn/item, kind, deadline and resolution. |
 | Event | Per-run sequence, timestamp, kind, payload version and sanitized JSON; user/agent messages are events. |
@@ -63,8 +63,8 @@ On a new owner, nonterminal runs become `unknown`, open interactions become
 `uncertain`, and old generation identity is retained on their records. No provider
 process is launched, resumed, queried or answered automatically. Repeated restarts
 do not append duplicate unknown events. Unknown holds the active slot until explicit
-human resolution to `abandoned`; old open/uncertain requests then become stale.
-The boolean proof input to `resolveUnknown` is an internal precondition, not user
+human resolution to `abandoned`; old open/uncertain requests then become stale. Terminal runs also recover old open requests as uncertain and can explicitly retire them as stale through the same human-confirmed resolution, preserving their terminal outcome and any later turn in the session.
+The boolean proof input to `resolveRun` is an internal precondition, not user
 authentication: the later manager/API must establish a human decision and evidence
 that the previous process stopped before calling it.
 
@@ -100,7 +100,7 @@ unknown; these receipts do not promise exactly-once external execution.
 
 Defaults are 30 days, 100 MiB of serialized event payloads per project, 4 MiB of
 text logs per run and 256 KiB reserved per run for control/message/state events.
-Each JSON event/result is at most 64 KiB; reads return at most 500 records per page.
+Each JSON event/result is at most 64 KiB; oversized text is redacted before shortening to the serialized JSON budget and records one truncation marker, preserving subsequent bounded logs. Reads return at most 500 records per page.
 Event pagination uses the last sequence; history uses bounded limit/offset.
 
 Only complete eligible terminal runs are removed, oldest first, with their events,
@@ -121,8 +121,8 @@ vacuum is introduced. Pending/unknown records are never deleted to reclaim space
 Persist only allowlisted text/message/error events and explicit typed metadata.
 Errors are enum codes; raw provider errors, auth/config objects and arbitrary RPC
 payloads are rejected. Text redacts configured exact credential values, common
-OpenAI/GitHub/AWS/JWT tokens, authorization headers, private keys, credential
-assignments and URL credentials. Receipt keys/requests are hashes, not raw values.
+OpenAI/GitHub/AWS/JWT tokens, authorization headers, PEM/PGP private keys, prefixed environment credential
+assignments (including DB_PASSWORD and AWS_SECRET_ACCESS_KEY) and URI credentials such as PostgreSQL/Redis as well as HTTP. Receipt keys/requests are hashes, not raw values.
 Credential-named JSON result fields are rejected.
 
 Pattern redaction cannot detect arbitrary unknown secrets or a token split across
